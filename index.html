@@ -1,36 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>🎾 WTA EDA Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎾 WTA Match Analytics Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
   <header>
     <h1>🎾 WTA Match Data Analysis (2007–2023)</h1>
-    <p>Exploring trends, surfaces, rankings, and odds</p>
+    <p>Interactive EDA based on WTA match dataset</p>
   </header>
 
   <main>
-    <section id="overview">
-      <h2>📅 Matches by Year and Surface</h2>
-      <div id="chart1"></div>
+    <section>
+      <h2>📅 Matches per Year</h2>
+      <div id="chart-year"></div>
     </section>
 
-    <section id="surfaces">
+    <section>
       <h2>🏟️ Surface Distribution</h2>
-      <div id="chart2"></div>
+      <div id="chart-surface"></div>
     </section>
 
-    <section id="rank">
-      <h2>📊 Rank Difference vs Win Probability</h2>
-      <div id="chart3"></div>
+    <section>
+      <h2>🏆 Matches by Round</h2>
+      <div id="chart-round"></div>
+    </section>
+
+    <section>
+      <h2>📈 Rank Difference vs Win Probability</h2>
+      <div id="chart-rankdiff"></div>
+    </section>
+
+    <section>
+      <h2>💰 Odds Distribution</h2>
+      <div id="chart-odds"></div>
+    </section>
+
+    <section>
+      <h2>🔗 Feature Correlation Heatmap</h2>
+      <div id="chart-corr"></div>
     </section>
   </main>
 
-  <footer>© 2025 Your Name | Data: WTA Kaggle Dataset</footer>
+  <footer>
+    <p>© 2025 | Data source: WTA matches dataset | Built with Plotly.js</p>
+  </footer>
+
   <script src="js/charts.js"></script>
 </body>
 </html>
