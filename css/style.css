@@ -1,0 +1,31 @@
+body {
+  font-family: "Inter", sans-serif;
+  background: #fafafa;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(90deg, #00b4db, #0083b0);
+  color: white;
+}
+
+h1, h2 {
+  margin-bottom: 0.5rem;
+}
+
+section {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: auto;
+}
+
+footer {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+  background: #f0f0f0;
+}
