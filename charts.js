@@ -4,29 +4,27 @@ document.addEventListener('DOMContentLoaded', () => {
     download: true,
     header: true,
     dynamicTyping: true,
-    delimiter: ",", // your file uses semicolons
+    skipEmptyLines: true,
+    delimiter: ";", // 🟢 Твой CSV использует ';' вместо ','
+    transformHeader: h => h.trim().replace(/^﻿/, ""), // 🟢 Убираем BOM
     complete: function (results) {
       try {
         const data = results.data.filter(d => d.Date && d.Player_1);
-        if (!data || data.length < 10) {
-          showError(
-            "⚠️ Dataset could not be loaded or contains too few rows.<br>" +
-            "Check that <strong>wta_data.csv</strong> is in the same folder and columns match:<br>" +
-            "<em>Tournament, Date, Court, Surface, Round, Player_1, Player_2, Rank_1, Rank_2, Pts_1, Pts_2, Odd_1, Odd_2, y...</em>"
-          );
-          return;
-        }
         console.log("✅ Loaded rows:", data.length);
         console.log("Example row:", data[0]);
+        if (!data || data.length < 10) {
+          showError("⚠️ Dataset not loaded correctly or too few rows.");
+          return;
+        }
         buildEDA(data);
       } catch (err) {
-        console.error(err);
-        showError("❌ Unexpected error while parsing dataset. Check console for details.");
+        console.error("❌ Parsing error:", err);
+        showError("❌ Error parsing dataset — check console.");
       }
     },
     error: function (err) {
       console.error("PapaParse Error:", err);
-      showError("❌ Failed to load wta_data.csv. Please check that the file exists in the same folder.");
+      showError("❌ Cannot load wta_data.csv — check if file exists.");
     }
   });
 });
