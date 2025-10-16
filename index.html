@@ -11,7 +11,7 @@
 </head>
 <body>
   <header>
-    <h1>WTA Data — Exploratory Dashboard</h1>
+    <h1>WTA Dataset — Exploratory Data Analysis</h1>
   </header>
 
   <div class="container">
@@ -37,102 +37,102 @@
     <!-- Tabs -->
     <div class="card" style="margin-top:16px;">
       <div class="controls" style="gap:8px;">
-        <button class="pill" data-tab="overview">Overview</button>
-        <button class="pill" data-tab="distributions">Distributions</button>
-        <button class="pill" data-tab="correlations">Correlations</button>
-        <button class="pill" data-tab="players">Players</button>
-        <button class="pill" data-tab="surfaces">Surfaces</button>
+        <button class="pill" data-tab="overview">Dataset Overview</button>
+        <button class="pill" data-tab="distributions">Feature Distributions</button>
+        <button class="pill" data-tab="correlations">Feature Correlations</button>
+        <button class="pill" data-tab="players">Players Analysis</button>
+        <button class="pill" data-tab="surfaces">Surface Statistics</button>
       </div>
     </div>
 
-    <!-- Overview -->
+    <!-- Dataset Overview -->
     <section id="tab-overview">
       <div class="grid cards" style="margin-top:16px;">
-        <div class="card"><div class="muted">Rows</div><div id="rows" class="metric">—</div></div>
-        <div class="card"><div class="muted">Columns</div><div id="cols" class="metric">—</div></div>
-        <div class="card"><div class="muted">Date range</div><div id="dates" class="metric">—</div></div>
-        <div class="card"><div class="muted">Class balance (y=1)</div><div id="balance" class="metric">—</div></div>
+        <div class="card"><div class="muted">Total Rows</div><div id="rows" class="metric">—</div></div>
+        <div class="card"><div class="muted">Total Columns</div><div id="cols" class="metric">—</div></div>
+        <div class="card"><div class="muted">Date Range</div><div id="dates" class="metric">—</div></div>
+        <div class="card"><div class="muted">Class Balance (y=1)</div><div id="balance" class="metric">—</div></div>
       </div>
 
       <div class="row" style="margin-top:16px;">
         <div class="card">
-          <div class="muted">Missing values (top 12)</div>
+          <div class="muted">Top 12 Features with Missing Values</div>
           <canvas id="missingChart"></canvas>
         </div>
         <div class="card">
-          <div class="muted">Matches per year</div>
+          <div class="muted">Matches per Year</div>
           <canvas id="yearChart"></canvas>
         </div>
       </div>
     </section>
 
-    <!-- Distributions -->
+    <!-- Feature Distributions -->
     <section id="tab-distributions" style="display:none;">
       <div class="card" style="margin-top:16px;">
         <div class="controls">
           <div>
-            <label for="feature">Feature to explore</label>
+            <label for="feature">Feature to Explore</label>
             <select id="feature"></select>
           </div>
           <div>
-            <label for="bins">Bins</label>
+            <label for="bins">Number of Bins</label>
             <input type="number" id="bins" min="5" max="100" step="1" value="30">
           </div>
         </div>
       </div>
       <div class="row" style="margin-top:16px;">
         <div class="card">
-          <div class="muted">Histogram</div>
+          <div class="muted">Value Distribution</div>
           <canvas id="histChart"></canvas>
         </div>
         <div class="card">
-          <div class="muted">Boxplot (approx.)</div>
+          <div class="muted">Box Summary (min–max range)</div>
           <canvas id="boxChart"></canvas>
         </div>
       </div>
     </section>
 
-    <!-- Correlations -->
+    <!-- Feature Correlations -->
     <section id="tab-correlations" style="display:none;">
       <div class="card" style="margin-top:16px;">
-        <div class="muted">Correlation heatmap (numeric features)</div>
+        <div class="muted">Correlation Heatmap (numeric features)</div>
         <canvas id="heatmap" style="width:100%; height:520px;"></canvas>
       </div>
     </section>
 
-    <!-- Players -->
+    <!-- Players Analysis -->
     <section id="tab-players" style="display:none;">
       <div class="row" style="margin-top:16px;">
         <div class="card">
-          <div class="muted">Top-10 by matches</div>
+          <div class="muted">Top 10 Players by Matches Played</div>
           <canvas id="topMatches"></canvas>
         </div>
         <div class="card">
-          <div class="muted">Top-10 by win rate (min 30 matches)</div>
+          <div class="muted">Top 10 Players by Win Rate (min 30 matches)</div>
           <canvas id="topWins"></canvas>
         </div>
       </div>
       <div class="card" style="margin-top:16px;">
-        <div class="muted">Sample (recent 20 under current filters)</div>
-        <table id="sample"><thead><tr><th>Date</th><th>Tournament</th><th>Surface</th><th>Player_1</th><th>Player_2</th><th>Winner</th></tr></thead><tbody></tbody></table>
+        <div class="muted">Sample of 20 Most Recent Matches (filtered)</div>
+        <table id="sample"><thead><tr><th>Date</th><th>Tournament</th><th>Surface</th><th>Player 1</th><th>Player 2</th><th>Winner</th></tr></thead><tbody></tbody></table>
       </div>
     </section>
 
-    <!-- Surfaces -->
+    <!-- Surface Statistics -->
     <section id="tab-surfaces" style="display:none;">
       <div class="row" style="margin-top:16px;">
         <div class="card">
-          <div class="muted">Win rate by surface (y=1 for Player_1)</div>
+          <div class="muted">Win Rate by Surface (Player 1)</div>
           <canvas id="surfWins"></canvas>
         </div>
         <div class="card">
-          <div class="muted">Matches share by surface</div>
+          <div class="muted">Surface Match Share</div>
           <canvas id="surfShare"></canvas>
         </div>
       </div>
     </section>
 
-    <div class="footer">EDA dashboard — no model, just data understanding.</div>
+    <div class="footer">Interactive EDA Dashboard — built for WTA Match Data</div>
   </div>
 
   <!-- Vendor scripts -->
