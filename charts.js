@@ -1,6 +1,6 @@
 // charts.js — basic version for Overview tab
 
-Papa.parse("./wta_data.csv", {
+Papa.parse("wta_data.csv", {
   download: true,
   header: true,
   dynamicTyping: true,
