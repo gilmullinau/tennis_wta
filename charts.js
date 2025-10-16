@@ -73,7 +73,7 @@ let CHARTS = { missing: null, dist: null, topPlayers: null, winRatePlayers: null
 =============================*/
 
 function init() {
-  const csvFile = "wta_data_features.csv"; // 👈 убедись, что это имя твоего файла
+  const csvFile = "wta_data.csv"; // 👈 убедись, что это имя твоего файла
   const delimiters = [",", ";", "\t"];
   let loaded = false;
 
