@@ -1,18 +1,49 @@
-// charts.js – fixed to match lowercase column names in wta_data.csv
-
+// charts.js — final version with error handling for missing/invalid data
 document.addEventListener('DOMContentLoaded', () => {
   Papa.parse("wta_data.csv", {
     download: true,
     header: true,
     dynamicTyping: true,
-    complete: function(results) {
-      const data = results.data.filter(d => d.date && d.player1);
-      console.log("Loaded rows:", data.length);
-      console.log("Example row:", data[0]);
-      buildEDA(data);
+    complete: function (results) {
+      try {
+        const data = results.data.filter(d => d.date && d.player1);
+        if (!data || data.length < 10) {
+          showError(
+            "⚠️ Dataset could not be loaded or contains too few rows.<br>" +
+            "Please check that <strong>wta_data.csv</strong> is in the same folder and has correct column names:<br>" +
+            "<em>tournament, date, court, surface, round, player1, player2, rank1, rank2, pts1, pts2, odd1, odd2, y, rank_diff, pts_diff, odd_diff</em>"
+          );
+          return;
+        }
+        console.log("✅ Loaded rows:", data.length);
+        console.log("Example row:", data[0]);
+        buildEDA(data);
+      } catch (err) {
+        console.error(err);
+        showError("❌ An unexpected error occurred while parsing the dataset. Check console for details.");
+      }
+    },
+    error: function (err) {
+      console.error("PapaParse Error:", err);
+      showError("❌ Failed to load wta_data.csv. Please check that the file exists in the same folder.");
     }
   });
 });
+
+function showError(msg) {
+  document.querySelector("main").innerHTML = `
+    <div style="
+      background:#2c2c2c;
+      color:#ffb3b3;
+      border:1px solid #ff6b6b;
+      padding:1.5rem;
+      margin:2rem;
+      border-radius:10px;
+      text-align:center;
+      font-size:1rem;">
+      ${msg}
+    </div>`;
+}
 
 function buildEDA(data) {
   // === Dataset summary ===
@@ -21,14 +52,14 @@ function buildEDA(data) {
   const players = new Set(data.flatMap(d => [d.player1, d.player2]));
   const favWins = data.filter(d => d.y === 1).length;
 
-  document.getElementById('datasetInfo').innerHTML = `
+  document.getElementById("datasetInfo").innerHTML = `
     Dataset contains <strong>${totalMatches.toLocaleString()}</strong> matches 
     from <strong>${Math.min(...years)}</strong> to <strong>${Math.max(...years)}</strong>,
     involving <strong>${players.size}</strong> unique players.<br>
     Favourites won <strong>${(favWins / totalMatches * 100).toFixed(1)}%</strong> of matches.
   `;
 
-  // === Overview chart: win rate by year ===
+  // === Overview chart ===
   const yearly = {};
   data.forEach(d => {
     const y = new Date(d.date).getFullYear();
@@ -36,6 +67,7 @@ function buildEDA(data) {
     yearly[y].total++;
     if (d.y === 1) yearly[y].wins++;
   });
+
   const yearLabels = Object.keys(yearly);
   const winRates = yearLabels.map(y => (yearly[y].wins / yearly[y].total * 100).toFixed(1));
 
@@ -55,7 +87,7 @@ function buildEDA(data) {
     options: { plugins: { legend: { display: false } } }
   });
 
-  // === Feature distributions ===
+  // === Distributions ===
   const numeric = ["rank_diff", "pts_diff", "odd_diff", "y"];
   const featureButtons = document.getElementById("featureButtons");
   const distCanvas = document.getElementById("distChart");
@@ -75,6 +107,10 @@ function buildEDA(data) {
   });
 
   function plotHistogram(feature, values) {
+    if (values.length < 2) {
+      showError(`No valid numeric data found for feature <strong>${feature}</strong>.`);
+      return;
+    }
     const bins = 30;
     const min = Math.min(...values);
     const max = Math.max(...values);
@@ -144,7 +180,7 @@ function buildEDA(data) {
 
   new Chart(document.getElementById("surfaceDistChart"), {
     type: "pie",
-    data: { labels: surfNames, datasets: [{ data: surfTotals, backgroundColor: ["#58a6ff","#d2a8ff","#3fb950"] }] }
+    data: { labels: surfNames, datasets: [{ data: surfTotals, backgroundColor: ["#58a6ff", "#d2a8ff", "#3fb950"] }] }
   });
 
   new Chart(document.getElementById("surfaceWinChart"), {
@@ -163,33 +199,35 @@ function correlationMatrix(data, cols) {
 function pearson(x, y) {
   const n = Math.min(x.length, y.length);
   const mx = mean(x), my = mean(y);
-  const num = x.reduce((a, _, i) => a + (x[i]-mx)*(y[i]-my), 0);
+  const num = x.reduce((a, _, i) => a + (x[i] - mx) * (y[i] - my), 0);
   const den = Math.sqrt(
-    x.reduce((a,v)=>a+(v-mx)**2,0) * y.reduce((a,v)=>a+(v-my)**2,0)
+    x.reduce((a, v) => a + (v - mx) ** 2, 0) * y.reduce((a, v) => a + (v - my) ** 2, 0)
   );
   return den === 0 ? 0 : num / den;
 }
 
-function mean(a){ return a.reduce((x,y)=>x+y,0)/a.length; }
+function mean(a) {
+  return a.reduce((x, y) => x + y, 0) / a.length;
+}
 
-function renderCorrTable(matrix, cols){
-  let html = `<table class='corr-table'><tr><th></th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
-  for(let i=0;i<cols.length;i++){
+function renderCorrTable(matrix, cols) {
+  let html = `<table class='corr-table'><tr><th></th>${cols.map(c => `<th>${c}</th>`).join("")}</tr>`;
+  for (let i = 0; i < cols.length; i++) {
     html += `<tr><th>${cols[i]}</th>`;
-    for(let j=0;j<cols.length;j++){
+    for (let j = 0; j < cols.length; j++) {
       const v = matrix[i][j].toFixed(2);
       html += `<td style='background-color:${corrColor(v)}'>${v}</td>`;
     }
-    html += `</tr>`;
+    html += "</tr>";
   }
-  html += `</table>`;
+  html += "</table>";
   return html;
 }
 
-function corrColor(v){
+function corrColor(v) {
   const n = parseFloat(v);
   const r = n > 0 ? 40 : 200;
   const g = n > 0 ? 200 : 60;
-  const alpha = Math.abs(n)*0.8 + 0.2;
+  const alpha = Math.abs(n) * 0.8 + 0.2;
   return `rgba(${r},${g},100,${alpha})`;
 }
