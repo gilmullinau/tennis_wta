@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Papa.parse("wta_data.csv", {
     download: true,
     header: true,
+    delimiter: ",",
     dynamicTyping: true,
     complete: function (results) {
       try {
