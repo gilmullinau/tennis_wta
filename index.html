@@ -26,7 +26,13 @@
     <!-- Overview -->
     <section id="overview" class="tab-content active">
       <h2>📘 Dataset Overview</h2>
-      <p>This dataset contains detailed information about Women's Tennis Association (WTA) matches between 2006 and 2025. Each row represents a single match.</p>
+      <p>
+        This dataset contains detailed information about Women's Tennis Association (WTA) matches between 2006 and 2025. Each row represents a single match.
+        Below you can see all available variables and their meanings.
+      </p>
+
+      <div id="datasetInfo" class="dataset-info"></div>
+
       <table class="info-table">
         <tr><th>Column</th><th>Description</th></tr>
         <tr><td><b>Tournament</b></td><td>Name of the tournament</td></tr>
@@ -43,6 +49,7 @@
         <tr><td><b>pts_diff</b></td><td>Difference in points (Pts_1 - Pts_2)</td></tr>
         <tr><td><b>odd_diff</b></td><td>Difference in odds (Odd_2 - Odd_1)</td></tr>
       </table>
+
       <div class="card">
         <canvas id="overviewChart"></canvas>
       </div>
@@ -75,6 +82,7 @@
     </section>
   </main>
 
+  <!-- Scripts -->
   <script src="charts.js"></script>
   <script>
     // Tab navigation
