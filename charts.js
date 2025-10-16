@@ -1,4 +1,4 @@
-// charts.js — robust EDA for WTA dashboard (Chart.js + PapaParse only)
+// charts.js — robust EDA for WTA dashboard (Chart.js + PapaParse only, updated for advanced features)
 
 /* ============================
    Helpers
@@ -7,7 +7,9 @@
 const NUMERIC_HINTS = [
   "rank_1","rank_2","pts_1","pts_2","odd_1","odd_2",
   "rank1","rank2","pts1","pts2","odd1","odd2",
-  "rank_diff","pts_diff","odd_diff","y","year"
+  "rank_diff","pts_diff","odd_diff",
+  "h2h_advantage","last_winner","surface_winrate_adv",
+  "y","year"
 ];
 
 const DISPLAY_NAMES = {
@@ -17,14 +19,17 @@ const DISPLAY_NAMES = {
   rank1: "Rank_1", rank2: "Rank_2",
   pts1: "Pts_1", pts2: "Pts_2",
   odd1: "Odd_1", odd2: "Odd_2",
-  rank_diff: "rank_diff", pts_diff: "pts_diff", odd_diff: "odd_diff",
-  y: "y", year: "year"
+  rank_diff: "Rank Diff", pts_diff: "Pts Diff", odd_diff: "Odd Diff",
+  h2h_advantage: "H2H Advantage",
+  last_winner: "Last Winner",
+  surface_winrate_adv: "Surface Winrate Advantage",
+  y: "Target (y)",
+  year: "Year"
 };
 
 function toNum(x) {
   if (x === null || x === undefined) return NaN;
   if (typeof x === "number") return x;
-  // remove spaces, commas, percent signs
   const s = String(x).replace(/\s|%|,/g, "");
   const v = parseFloat(s);
   return Number.isFinite(v) ? v : NaN;
@@ -32,16 +37,14 @@ function toNum(x) {
 
 function isLikelyNumericCol(colName) {
   const low = colName.toLowerCase();
-  return NUMERIC_HINTS.includes(low) || /(\d|rank|pts|odd|year|diff|score_\d+)/i.test(low);
+  return NUMERIC_HINTS.includes(low) || /(\d|rank|pts|odd|year|diff|advantage|winner)/i.test(low);
 }
 
 function parseDateToYear(s) {
   if (!s) return NaN;
-  // Try ISO, dd/mm/yyyy, mm/dd/yyyy
   const d = new Date(s);
   const year = d instanceof Date && !isNaN(d) ? d.getFullYear() : NaN;
   if (!isNaN(year)) return year;
-  // Fallback split by non-digits
   const parts = String(s).split(/\D+/).map(Number).filter(n => !isNaN(n));
   const y = parts.find(p => p > 1900 && p < 2100);
   return y ?? NaN;
@@ -80,7 +83,7 @@ let CHARTS = {
 init();
 
 function init() {
-  const csvPath = "wta_data.csv"; // same folder as index.html
+  const csvPath = "wta_data_features.csv"; // updated dataset with engineered features
   Papa.parse(csvPath, {
     download: true,
     header: true,
@@ -88,7 +91,7 @@ function init() {
     skipEmptyLines: "greedy",
     complete: onCsvLoaded,
     error: (err) => {
-      showDatasetInfo(`⚠️ Не удалось загрузить CSV (${err?.message || "unknown error"}). Убедись, что запускаешь через локальный сервер (например, "python -m http.server").`);
+      showDatasetInfo(`⚠️ Не удалось загрузить CSV (${err?.message || "unknown error"}). Проверь, что файл называется "wta_data_features.csv" и лежит рядом с index.html`);
     }
   });
 }
@@ -98,49 +101,37 @@ function init() {
 =============================*/
 
 function onCsvLoaded(results) {
-  const { data, meta, errors } = results || {};
+  const { data, meta } = results || {};
   if (!Array.isArray(data) || data.length === 0) {
     showDatasetInfo("⚠️ CSV загружен, но нет строк данных. Проверь файл.");
     return;
   }
 
-  // Filter out totally empty rows (all fields empty)
   const cols = (meta && meta.fields) ? meta.fields : Object.keys(data[0] || {});
-  const cleaned = data.filter(row => {
-    return cols.some(c => (row[c] !== null && row[c] !== undefined && String(row[c]).trim() !== ""));
-  });
+  const cleaned = data.filter(row =>
+    cols.some(c => (row[c] !== null && row[c] !== undefined && String(row[c]).trim() !== ""))
+  );
 
   if (cleaned.length === 0) {
     showDatasetInfo("⚠️ В файле только пустые строки или заголовки без данных.");
     return;
   }
 
-  // Normalize keys (trim spaces)
   const norm = cleaned.map(row => {
     const r = {};
-    for (const k of Object.keys(row)) {
-      r[k.trim()] = row[k];
-    }
+    for (const k of Object.keys(row)) r[k.trim()] = row[k];
     return r;
   });
 
-  // Add/derive columns if missing
-  const derived = addDerivedColumns(norm);
+  RAW = addDerivedColumns(norm);
+  NUMERIC_COLS = detectNumericColumns(RAW);
 
-  RAW = derived;
-
-  // Build numeric columns list
-  NUMERIC_COLS = detectNumericColumns(derived);
-
-  // Final info panel
-  renderDatasetOverview(derived);
-
-  // Charts
-  renderMissingness(derived);
+  renderDatasetOverview(RAW);
+  renderMissingness(RAW);
   buildFeatureButtons(NUMERIC_COLS);
-  renderDistributions(derived, NUMERIC_COLS[0]); // default first numeric
-  renderCorrelations(derived, NUMERIC_COLS);
-  renderPlayers(derived);
+  renderDistributions(RAW, NUMERIC_COLS[0]);
+  renderCorrelations(RAW, NUMERIC_COLS);
+  renderPlayers(RAW);
 }
 
 /* ============================
@@ -148,58 +139,33 @@ function onCsvLoaded(results) {
 =============================*/
 
 function addDerivedColumns(rows) {
-  const haveYear = rows.some(r => "year" in r);
-  const haveRankDiff = rows.some(r => "rank_diff" in r);
-  const havePtsDiff = rows.some(r => "pts_diff" in r);
-  const haveOddDiff = rows.some(r => "odd_diff" in r);
-
   return rows.map(r => {
     const out = { ...r };
 
-    // Normalize common column name variants
-    // Player names
-    out.Player_1 = out.Player_1 ?? out.player_1 ?? out.player1 ?? out.P1 ?? out.p1;
-    out.Player_2 = out.Player_2 ?? out.player_2 ?? out.player2 ?? out.P2 ?? out.p2;
-
-    // Ranks
-    out.Rank_1 = out.Rank_1 ?? out.rank_1 ?? out.rank1 ?? out.RANK_1 ?? out.Rank1;
-    out.Rank_2 = out.Rank_2 ?? out.rank_2 ?? out.rank2 ?? out.RANK_2 ?? out.Rank2;
-
-    // Points
-    out.Pts_1 = out.Pts_1 ?? out.pts_1 ?? out.pts1 ?? out.PTS_1 ?? out.Pts1;
-    out.Pts_2 = out.Pts_2 ?? out.pts_2 ?? out.pts2 ?? out.PTS_2 ?? out.Pts2;
-
-    // Odds
-    out.Odd_1 = out.Odd_1 ?? out.odd_1 ?? out.odd1 ?? out.ODD_1 ?? out.Odd1;
-    out.Odd_2 = out.Odd_2 ?? out.odd_2 ?? out.odd2 ?? out.ODD_2 ?? out.Odd2;
-
-    // Target
+    out.Player_1 = out.Player_1 ?? out.player_1 ?? out.P1 ?? out.p1;
+    out.Player_2 = out.Player_2 ?? out.player_2 ?? out.P2 ?? out.p2;
+    out.Rank_1 = out.Rank_1 ?? out.rank_1;
+    out.Rank_2 = out.Rank_2 ?? out.rank_2;
+    out.Pts_1 = out.Pts_1 ?? out.pts_1;
+    out.Pts_2 = out.Pts_2 ?? out.pts_2;
+    out.Odd_1 = out.Odd_1 ?? out.odd_1;
+    out.Odd_2 = out.Odd_2 ?? out.odd_2;
     out.y = out.y ?? out.target ?? out.win ?? out.Won ?? out.won;
 
-    // Date/year
-    const dateVal = out.Date ?? out.date ?? out.match_date ?? out.MatchDate;
-    if (!("year" in out) && !haveYear) {
-      const yr = parseDateToYear(dateVal);
+    if (!("year" in out)) {
+      const yr = parseDateToYear(out.Date);
       if (!isNaN(yr)) out.year = yr;
     }
 
-    if (!("rank_diff" in out) && !haveRankDiff) {
-      const r1 = toNum(out.Rank_1);
-      const r2 = toNum(out.Rank_2);
-      if (!isNaN(r1) || !isNaN(r2)) out.rank_diff = (r2 - r1);
-    }
+    // Derived numeric features if missing
+    if (!("rank_diff" in out)) out.rank_diff = toNum(out.Rank_2) - toNum(out.Rank_1);
+    if (!("pts_diff" in out)) out.pts_diff = toNum(out.Pts_1) - toNum(out.Pts_2);
+    if (!("odd_diff" in out)) out.odd_diff = toNum(out.Odd_2) - toNum(out.Odd_1);
 
-    if (!("pts_diff" in out) && !havePtsDiff) {
-      const p1 = toNum(out.Pts_1);
-      const p2 = toNum(out.Pts_2);
-      if (!isNaN(p1) || !isNaN(p2)) out.pts_diff = (p1 - p2);
-    }
-
-    if (!("odd_diff" in out) && !haveOddDiff) {
-      const o1 = toNum(out.Odd_1);
-      const o2 = toNum(out.Odd_2);
-      if (!isNaN(o1) || !isNaN(o2)) out.odd_diff = (toNum(o2) - toNum(o1));
-    }
+    // Safety for engineered columns
+    out.h2h_advantage = toNum(out.h2h_advantage ?? 0);
+    out.last_winner = toNum(out.last_winner ?? 0);
+    out.surface_winrate_adv = toNum(out.surface_winrate_adv ?? 0);
 
     return out;
   });
@@ -210,37 +176,27 @@ function addDerivedColumns(rows) {
 =============================*/
 
 function detectNumericColumns(rows) {
-  const sample = rows.slice(0, Math.min(200, rows.length));
+  const sample = rows.slice(0, Math.min(300, rows.length));
   const cols = uniq(sample.flatMap(r => Object.keys(r)));
   const numericCols = [];
 
   for (const c of cols) {
-    // Count how many numeric-like values
     let nCount = 0, seen = 0;
     for (const r of sample) {
-      if (!(c in r)) continue;
       const v = r[c];
       if (v === "" || v === null || v === undefined) continue;
       seen++;
       if (Number.isFinite(toNum(v))) nCount++;
     }
-    // Heuristic: ≥ 70% numeric among non-empty → numeric
-    if (seen > 0 && nCount / seen >= 0.7 && isLikelyNumericCol(c)) {
-      numericCols.push(c);
-    }
+    if (seen > 0 && nCount / seen >= 0.7 && isLikelyNumericCol(c)) numericCols.push(c);
   }
 
-  // Ensure y present if binary-like
-  if (!numericCols.includes("y") && rows.some(r => r.y !== undefined)) {
-    numericCols.push("y");
-  }
+  if (!numericCols.includes("y") && rows.some(r => r.y !== undefined)) numericCols.push("y");
 
-  // Fallback if nothing found
-  if (numericCols.length === 0) {
-    // try to force a few knowns
-    ["Rank_1","Rank_2","Pts_1","Pts_2","Odd_1","Odd_2","rank_diff","pts_diff","odd_diff","year","y"]
-      .forEach(k => { if (rows.some(r => k in r)) numericCols.push(k); });
-  }
+  // Ensure new engineered features are included
+  ["h2h_advantage", "last_winner", "surface_winrate_adv"].forEach(f => {
+    if (rows.some(r => f in r) && !numericCols.includes(f)) numericCols.push(f);
+  });
 
   return uniq(numericCols);
 }
@@ -261,21 +217,11 @@ function renderDatasetOverview(rows) {
   const yMin = years.length ? Math.min(...years) : "—";
   const yMax = years.length ? Math.max(...years) : "—";
 
-  const surfaces = {};
-  rows.forEach(r => {
-    const s = (r.Surface ?? r.surface ?? r.SURFACE ?? "").toString().toLowerCase().trim();
-    if (!s) return;
-    surfaces[s] = (surfaces[s] || 0) + 1;
-  });
-  const topSurf = Object.entries(surfaces).sort((a,b)=>b[1]-a[1]).slice(0,3)
-                    .map(([k,v]) => `${k}: ${v}`);
-
   const html = `
     <div><strong>Строк:</strong> ${nRows}, <strong>Колонок:</strong> ${cols.length}</div>
     <div><strong>Годы:</strong> ${yMin}–${yMax}</div>
-    <div><strong>Числовые признаки:</strong> ${NUMERIC_COLS.length ? NUMERIC_COLS.join(", ") : "не обнаружены"}</div>
-    ${topSurf.length ? `<div><strong>Поверхности (топ):</strong> ${topSurf.join(" • ")}</div>` : ""}
-    ${nRows < 5 ? `<div class="badge">ℹ️ Мало строк: визуализации могут быть ограничены, но всё работает.</div>` : ""}
+    <div><strong>Числовые признаки:</strong> ${NUMERIC_COLS.join(", ")}</div>
+    <div><strong>Доп. признаки:</strong> h2h_advantage, last_winner, surface_winrate_adv</div>
   `;
   showDatasetInfo(html);
 }
@@ -304,18 +250,12 @@ function renderMissingness(rows) {
       labels: stats.map(s => s.col),
       datasets: [{ label: "% пропусков", data: stats.map(s => s.missPct) }]
     },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: true } },
-      scales: {
-        y: { beginAtZero: true, ticks: { callback: v => v + "%" } }
-      }
-    }
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
   });
 }
 
 /* ============================
-   Distributions (Histogram)
+   Distributions
 =============================*/
 
 function buildFeatureButtons(numericCols) {
@@ -340,240 +280,84 @@ function buildFeatureButtons(numericCols) {
 
 function renderDistributions(rows, col) {
   const vals = rows.map(r => toNum(r[col])).filter(v => Number.isFinite(v));
-  if (vals.length === 0) {
-    drawEmptyDist(`Нет числовых значений для "${col}"`);
-    return;
-  }
-
-  const n = vals.length;
+  if (!vals.length) return;
   vals.sort((a,b)=>a-b);
+  const n = vals.length, bins = clamp(Math.round(Math.log2(n)+1), 5, 30);
   const min = vals[0], max = vals[vals.length-1];
-  const k = clamp(Math.round(Math.log2(n) + 1), 5, 30); // Sturges-ish
-  const binSize = (max - min) / k || 1;
-  const edges = Array.from({length: k+1}, (_,i)=> min + i*binSize);
-  const counts = new Array(k).fill(0);
-  for (const v of vals) {
-    let idx = Math.floor((v - min) / binSize);
-    if (idx >= k) idx = k-1;
-    if (idx < 0) idx = 0;
-    counts[idx]++;
-  }
-  const labels = counts.map((_,i)=> {
-    const a = edges[i], b = edges[i+1];
-    return `${roundPretty(a)}–${roundPretty(b)}`;
+  const step = (max-min)/bins || 1;
+  const counts = Array(bins).fill(0);
+  vals.forEach(v => {
+    let i = Math.floor((v-min)/step);
+    if (i>=bins) i=bins-1;
+    counts[i]++;
   });
+  const labels = Array.from({length:bins},(_,i)=> (min+i*step).toFixed(2));
 
   const ctx = document.getElementById("distChart").getContext("2d");
   if (CHARTS.dist) CHARTS.dist.destroy();
-  CHARTS.dist = new Chart(ctx, {
-    type: "bar",
-    data: { labels, datasets: [{ label: (DISPLAY_NAMES[col]||col), data: counts }] },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: true } },
-      scales: {
-        x: { ticks: { maxRotation: 0, autoSkip: true } },
-        y: { beginAtZero: true }
-      }
-    }
+  CHARTS.dist = new Chart(ctx,{
+    type:"bar",
+    data:{labels,datasets:[{label:DISPLAY_NAMES[col]||col,data:counts}]},
+    options:{responsive:true,scales:{y:{beginAtZero:true}}}
   });
-}
-
-function drawEmptyDist(msg) {
-  const ctx = document.getElementById("distChart").getContext("2d");
-  if (CHARTS.dist) CHARTS.dist.destroy();
-  CHARTS.dist = new Chart(ctx, {
-    type: "bar",
-    data: { labels: [""], datasets: [{ label: msg, data: [0] }] },
-    options: { plugins: { legend: { display: true } } }
-  });
-}
-
-function roundPretty(x) {
-  if (!Number.isFinite(x)) return x;
-  if (Math.abs(x) >= 1000) return Math.round(x);
-  if (Math.abs(x) >= 100) return Math.round(x * 10) / 10;
-  if (Math.abs(x) >= 10) return Math.round(x * 100) / 100;
-  return Math.round(x * 1000) / 1000;
 }
 
 /* ============================
-   Correlations (table heatmap)
+   Correlations
 =============================*/
 
-function renderCorrelations(rows, numericCols) {
+function renderCorrelations(rows, cols) {
   const container = document.getElementById("corrContainer");
-  if (!numericCols.length) {
-    container.innerHTML = `<div class="badge">Нет числовых признаков для корреляции</div>`;
-    return;
-  }
-
-  // Build matrix
   const matrix = {};
-  const cols = numericCols;
-  cols.forEach(c => { matrix[c] = {}; });
-
-  // Pre-extract arrays
-  const series = {};
-  cols.forEach(c => {
-    series[c] = rows.map(r => toNum(r[c])).filter(v => Number.isFinite(v));
+  cols.forEach(a=>{
+    matrix[a]={};
+    cols.forEach(b=>{
+      matrix[a][b]=pearson(rows,a,b);
+    });
   });
-
-  for (let i=0;i<cols.length;i++) {
-    for (let j=0;j<cols.length;j++) {
-      const a = cols[i], b = cols[j];
-      matrix[a][b] = pearson(rows, a, b);
-    }
-  }
-
-  // Build table HTML
-  let html = `<div class="card"><table class="corr-table"><thead><tr><th></th>`;
-  html += cols.map(c => `<th>${DISPLAY_NAMES[c] || c}</th>`).join("");
-  html += `</tr></thead><tbody>`;
-
-  for (const rC of cols) {
-    html += `<tr><th>${DISPLAY_NAMES[rC] || rC}</th>`;
-    for (const cC of cols) {
-      const v = matrix[rC][cC];
-      const bg = corrColor(v);
-      const txt = Number.isFinite(v) ? (Math.round(v*100)/100).toFixed(2) : "—";
-      html += `<td style="background:${bg};">${txt}</td>`;
-    }
-    html += `</tr>`;
-  }
-  html += `</tbody></table></div>`;
-
-  container.innerHTML = html;
+  let html=`<table class="corr-table"><thead><tr><th></th>${cols.map(c=>`<th>${DISPLAY_NAMES[c]||c}</th>`).join("")}</tr></thead><tbody>`;
+  cols.forEach(a=>{
+    html+=`<tr><th>${DISPLAY_NAMES[a]||a}</th>`;
+    cols.forEach(b=>{
+      const r=matrix[a][b];
+      const color=r>0?`rgba(0,200,0,${Math.abs(r)})`:`rgba(200,0,0,${Math.abs(r)})`;
+      html+=`<td style="background:${color}">${Number.isFinite(r)?r.toFixed(2):"—"}</td>`;
+    });
+    html+="</tr>";
+  });
+  html+="</tbody></table>";
+  container.innerHTML=html;
 }
 
-function pearson(rows, colA, colB) {
-  const pairs = [];
-  for (const r of rows) {
-    const a = toNum(r[colA]);
-    const b = toNum(r[colB]);
-    if (Number.isFinite(a) && Number.isFinite(b)) pairs.push([a,b]);
-  }
-  const n = pairs.length;
-  if (n < 3) return NaN;
-  const xs = pairs.map(p => p[0]);
-  const ys = pairs.map(p => p[1]);
-  const mx = mean(xs), my = mean(ys);
-  let num = 0, dx2 = 0, dy2 = 0;
-  for (let i=0;i<n;i++) {
-    const dx = xs[i] - mx, dy = ys[i] - my;
-    num += dx*dy; dx2 += dx*dx; dy2 += dy*dy;
-  }
-  const den = Math.sqrt(dx2*dy2);
-  if (den === 0) return NaN;
-  return clamp(num/den, -1, 1);
-}
-
-function mean(arr) {
-  return arr.reduce((a,b)=>a+b, 0) / arr.length;
-}
-
-function corrColor(r) {
-  if (!Number.isFinite(r)) return "transparent";
-  // red (neg) -> white -> green (pos)
-  const g = r > 0 ? Math.round(255 * r) : 0;
-  const red = r < 0 ? Math.round(255 * Math.abs(r)) : 0;
-  const alpha = 0.25 + 0.45 * Math.abs(r); // min visibility
-  return `rgba(${red}, ${g}, 0, ${alpha})`;
+function pearson(rows,a,b){
+  const arr=rows.map(r=>[toNum(r[a]),toNum(r[b])]).filter(([x,y])=>!isNaN(x)&&!isNaN(y));
+  const n=arr.length;
+  if(n<5)return 0;
+  const mx=arr.reduce((s,[x])=>s+x,0)/n,my=arr.reduce((s,[,y])=>s+y,0)/n;
+  const num=arr.reduce((s,[x,y])=>s+(x-mx)*(y-my),0);
+  const den=Math.sqrt(arr.reduce((s,[x])=>s+(x-mx)**2,0)*arr.reduce((s,[,y])=>s+(y-my)**2,0));
+  return den?num/den:0;
 }
 
 /* ============================
-   Players (Top N & Win Rates)
+   Players
 =============================*/
 
 function renderPlayers(rows) {
-  // Count matches per player (sum of appearances in Player_1/Player_2)
-  const cnt = {};
-  const wins = {};
-
-  rows.forEach(r => {
-    const p1 = (r.Player_1 || r.player_1 || r.player1 || "").toString();
-    const p2 = (r.Player_2 || r.player_2 || r.player2 || "").toString();
-    if (p1) { cnt[p1] = (cnt[p1] || 0) + 1; }
-    if (p2) { cnt[p2] = (cnt[p2] || 0) + 1; }
-
-    // Compute wins from target y when present, else infer from Winner if exists
-    let winner = r.Winner || r.winner || "";
-    let y = r.y;
-    if (y !== undefined && y !== null && String(y).trim() !== "") {
-      const yNum = toNum(y);
-      if (Number.isFinite(yNum)) {
-        if (yNum === 1 && p1) wins[p1] = (wins[p1] || 0) + 1;
-        if (yNum === 0 && p2) wins[p2] = (wins[p2] || 0) + 1;
-      }
-    } else if (winner) {
-      // fallback: if winner name matches
-      winner = String(winner);
-      if (winner === p1) wins[p1] = (wins[p1] || 0) + 1;
-      if (winner === p2) wins[p2] = (wins[p2] || 0) + 1;
-    }
+  const cnt={},wins={};
+  rows.forEach(r=>{
+    const p1=r.Player_1,p2=r.Player_2,y=toNum(r.y);
+    cnt[p1]=(cnt[p1]||0)+1;
+    cnt[p2]=(cnt[p2]||0)+1;
+    if(y===1)wins[p1]=(wins[p1]||0)+1;
+    else if(y===0)wins[p2]=(wins[p2]||0)+1;
   });
-
-  const players = Object.keys(cnt);
-  if (players.length === 0) {
-    drawEmptyPlayers();
-    return;
-  }
-
-  // Top 10 by matches
-  const top = players.map(p => ({p, matches: cnt[p], wins: wins[p] || 0}))
-                     .sort((a,b)=>b.matches - a.matches)
-                     .slice(0, 10);
-
-  // Chart 1: matches count
-  const ctx1 = document.getElementById("topPlayersChart").getContext("2d");
-  if (CHARTS.topPlayers) CHARTS.topPlayers.destroy();
-  CHARTS.topPlayers = new Chart(ctx1, {
-    type: "bar",
-    data: {
-      labels: top.map(t=>t.p),
-      datasets: [{ label: "Матчей", data: top.map(t=>t.matches) }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: true } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
-
-  // Chart 2: win rate among top 10 by matches
-  const ctx2 = document.getElementById("winRatePlayersChart").getContext("2d");
-  if (CHARTS.winRatePlayers) CHARTS.winRatePlayers.destroy();
-  CHARTS.winRatePlayers = new Chart(ctx2, {
-    type: "bar",
-    data: {
-      labels: top.map(t=>t.p),
-      datasets: [{
-        label: "Win rate, %",
-        data: top.map(t=> t.matches ? Math.round((t.wins / t.matches) * 1000)/10 : 0)
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: true } },
-      scales: {
-        y: { beginAtZero: true, ticks: { callback: v => v + "%" } }
-      }
-    }
-  });
-}
-
-function drawEmptyPlayers() {
-  const c1 = document.getElementById("topPlayersChart").getContext("2d");
-  if (CHARTS.topPlayers) CHARTS.topPlayers.destroy();
-  CHARTS.topPlayers = new Chart(c1, {
-    type: "bar",
-    data: { labels: [""], datasets: [{ label: "Нет данных по игрокам", data: [0] }] }
-  });
-
-  const c2 = document.getElementById("winRatePlayersChart").getContext("2d");
-  if (CHARTS.winRatePlayers) CHARTS.winRatePlayers.destroy();
-  CHARTS.winRatePlayers = new Chart(c2, {
-    type: "bar",
-    data: { labels: [""], datasets: [{ label: "Нет данных по игрокам", data: [0] }] }
-  });
+  const top=Object.keys(cnt).map(p=>({p,m:cnt[p],w:wins[p]||0}))
+      .sort((a,b)=>b.m-a.m).slice(0,10);
+  const ctx1=document.getElementById("topPlayersChart").getContext("2d");
+  if(CHARTS.topPlayers)CHARTS.topPlayers.destroy();
+  CHARTS.topPlayers=new Chart(ctx1,{type:"bar",data:{labels:top.map(x=>x.p),datasets:[{label:"Matches",data:top.map(x=>x.m)}]},options:{scales:{y:{beginAtZero:true}}}});
+  const ctx2=document.getElementById("winRatePlayersChart").getContext("2d");
+  if(CHARTS.winRatePlayers)CHARTS.winRatePlayers.destroy();
+  CHARTS.winRatePlayers=new Chart(ctx2,{type:"bar",data:{labels:top.map(x=>x.p),datasets:[{label:"Win Rate %",data:top.map(x=>x.m?x.w/x.m*100:0)}]},options:{scales:{y:{beginAtZero:true}}}});
 }

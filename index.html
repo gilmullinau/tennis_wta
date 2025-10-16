@@ -21,6 +21,7 @@
     <button class="tab" data-tab="distributions">Distributions</button>
     <button class="tab" data-tab="correlations">Correlations</button>
     <button class="tab" data-tab="players">Players</button>
+    <button class="tab" data-tab="featureimpact">Feature Impact</button>
   </nav>
 
   <main>
@@ -41,30 +42,21 @@
       <table class="info-table">
         <thead><tr><th>Column</th><th>Description</th></tr></thead>
         <tbody>
-  <tr><td><strong>Tournament</strong></td><td>Name of the tournament <span class="badge optional">optional</span></td></tr>
-  <tr><td><strong>Date</strong></td><td>Match date (used to derive <code>year</code>)</td></tr>
-  <tr><td><strong>Court</strong></td><td>Indoor / Outdoor</td></tr>
-  <tr><td><strong>Surface</strong></td><td>Surface type: hard, clay, grass</td></tr>
-  <tr><td><strong>Round</strong></td><td>Tournament stage (e.g., R32, QF, SF, F)</td></tr>
-
-  <tr><td><strong>Best of</strong></td><td>Sets per match (WTA is almost always Bo3) <span class="badge optional">optional</span></td></tr>
-
-  <tr><td><strong>Player_1 / Player_2</strong></td><td>Competitor names — Player_1 is the favourite <span class="badge optional">optional (ID)</span></td></tr>
-  <tr><td><strong>Winner</strong></td><td>Winner name (duplicates target) <span class="badge leakage">leakage</span></td></tr>
-
-  <tr><td><strong>Rank_1 / Rank_2</strong></td><td>Official WTA rankings (lower is better)</td></tr>
-  <tr><td><strong>Pts_1 / Pts_2</strong></td><td>WTA ranking points</td></tr>
-  <tr><td><strong>Odd_1 / Odd_2</strong></td><td>Bookmaker odds (smaller ⇒ higher win probability)</td></tr>
-
-  <tr><td><strong>Score</strong></td><td>Final score (reveals outcome) <span class="badge leakage">leakage</span> <span class="badge optional">optional</span></td></tr>
-
-  <tr><td><strong>y</strong></td><td>Target: 1 = favourite (Player_1) won, 0 = lost</td></tr>
-  <tr><td><strong>year</strong></td><td>Calendar year (derived from Date) <span class="badge derived">derived</span> <span class="badge optional">optional</span></td></tr>
-
-  <tr><td><strong>rank_diff</strong></td><td>Rank_2 − Rank_1 <span class="badge derived">derived</span></td></tr>
-  <tr><td><strong>pts_diff</strong></td><td>Pts_1 − Pts_2 <span class="badge derived">derived</span></td></tr>
-  <tr><td><strong>odd_diff</strong></td><td>Odd_2 − Odd_1 <span class="badge derived">derived</span></td></tr>
-</tbody>
+          <tr><td><strong>Tournament</strong></td><td>Name of the tournament <span class="badge optional">optional</span></td></tr>
+          <tr><td><strong>Date</strong></td><td>Match date (used to derive <code>year</code>)</td></tr>
+          <tr><td><strong>Court</strong></td><td>Indoor / Outdoor</td></tr>
+          <tr><td><strong>Surface</strong></td><td>Surface type: hard, clay, grass</td></tr>
+          <tr><td><strong>Round</strong></td><td>Tournament stage (e.g., R32, QF, SF, F)</td></tr>
+          <tr><td><strong>Player_1 / Player_2</strong></td><td>Competitor names — Player_1 is the favourite</td></tr>
+          <tr><td><strong>Rank_1 / Rank_2</strong></td><td>Official WTA rankings (lower is better)</td></tr>
+          <tr><td><strong>Pts_1 / Pts_2</strong></td><td>WTA ranking points</td></tr>
+          <tr><td><strong>Odd_1 / Odd_2</strong></td><td>Bookmaker odds (smaller ⇒ higher win probability)</td></tr>
+          <tr><td><strong>y</strong></td><td>Target: 1 = favourite (Player_1) won, 0 = lost</td></tr>
+          <tr><td><strong>rank_diff / pts_diff / odd_diff</strong></td><td>Derived numeric differences for modeling</td></tr>
+          <tr><td><strong>h2h_advantage</strong></td><td>1 if Player_1 had more wins in head-to-head history</td></tr>
+          <tr><td><strong>last_winner</strong></td><td>1 if Player_1 won their most recent meeting</td></tr>
+          <tr><td><strong>surface_winrate_adv</strong></td><td>Winrate advantage of Player_1 on given surface</td></tr>
+        </tbody>
       </table>
 
       <div class="card">
@@ -95,16 +87,25 @@
       <div class="card"><canvas id="winRatePlayersChart"></canvas></div>
     </section>
 
+    <!-- === FEATURE IMPACT === -->
+    <section id="featureimpact" class="tab-content">
+      <h2>Feature Impact</h2>
+      <p>Correlation of each feature with the match outcome (target <code>y</code>).</p>
+      <div class="card"><canvas id="featureImpactChart"></canvas></div>
+    </section>
+
   </main>
 
   <script src="charts.js"></script>
 
   <script>
-    // Tab switching logic
+    // Tab switching logic (fixed)
     document.querySelectorAll(".tab").forEach(btn => {
       btn.addEventListener("click", () => {
+        // deactivate all tabs and sections
         document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-content").forEach(sec => sec.classList.remove("active"));
+        // activate selected
         btn.classList.add("active");
         document.getElementById(btn.dataset.tab).classList.add("active");
         window.scrollTo({ top: 0, behavior: "smooth" });
