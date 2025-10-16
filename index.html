@@ -1,143 +1,91 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WTA — EDA Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WTA Tennis EDA Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>WTA Dataset — Exploratory Data Analysis</h1>
+    <h1>🎾 WTA Tennis EDA Dashboard</h1>
+    <p class="subtitle">Exploratory Data Analysis for WTA matches (2006–2025)</p>
   </header>
 
-  <div class="container">
-    <!-- Global controls -->
-    <div class="card">
-      <div class="controls">
-        <div>
-          <label for="year">Year</label>
-          <select id="year"></select>
-        </div>
-        <div>
-          <label for="surface">Surface</label>
-          <select id="surface">
-            <option value="All">All</option>
-          </select>
-        </div>
-        <div style="margin-left:auto">
-          <span id="coverage" class="pill">Loading…</span>
-        </div>
-      </div>
-    </div>
+  <nav>
+    <button class="tab active" data-tab="overview">Dataset Overview</button>
+    <button class="tab" data-tab="distributions">Feature Distributions</button>
+    <button class="tab" data-tab="correlations">Feature Correlations</button>
+    <button class="tab" data-tab="players">Players Analysis</button>
+    <button class="tab" data-tab="surfaces">Surface Statistics</button>
+  </nav>
 
-    <!-- Tabs -->
-    <div class="card" style="margin-top:16px;">
-      <div class="controls" style="gap:8px;">
-        <button class="pill" data-tab="overview">Dataset Overview</button>
-        <button class="pill" data-tab="distributions">Feature Distributions</button>
-        <button class="pill" data-tab="correlations">Feature Correlations</button>
-        <button class="pill" data-tab="players">Players Analysis</button>
-        <button class="pill" data-tab="surfaces">Surface Statistics</button>
-      </div>
-    </div>
-
-    <!-- Dataset Overview -->
-    <section id="tab-overview">
-      <div class="grid cards" style="margin-top:16px;">
-        <div class="card"><div class="muted">Total Rows</div><div id="rows" class="metric">—</div></div>
-        <div class="card"><div class="muted">Total Columns</div><div id="cols" class="metric">—</div></div>
-        <div class="card"><div class="muted">Date Range</div><div id="dates" class="metric">—</div></div>
-        <div class="card"><div class="muted">Class Balance (y=1)</div><div id="balance" class="metric">—</div></div>
-      </div>
-
-      <div class="row" style="margin-top:16px;">
-        <div class="card">
-          <div class="muted">Top 12 Features with Missing Values</div>
-          <canvas id="missingChart"></canvas>
-        </div>
-        <div class="card">
-          <div class="muted">Matches per Year</div>
-          <canvas id="yearChart"></canvas>
-        </div>
+  <main>
+    <!-- Overview -->
+    <section id="overview" class="tab-content active">
+      <h2>📘 Dataset Overview</h2>
+      <p>This dataset contains detailed information about Women's Tennis Association (WTA) matches between 2006 and 2025. Each row represents a single match.</p>
+      <table class="info-table">
+        <tr><th>Column</th><th>Description</th></tr>
+        <tr><td><b>Tournament</b></td><td>Name of the tournament</td></tr>
+        <tr><td><b>Date</b></td><td>Date of the match</td></tr>
+        <tr><td><b>Court</b></td><td>Indoor or Outdoor court type</td></tr>
+        <tr><td><b>Surface</b></td><td>Type of surface: Hard, Clay, or Grass</td></tr>
+        <tr><td><b>Round</b></td><td>Tournament stage (1st Round, Quarterfinal, etc.)</td></tr>
+        <tr><td><b>Player_1 / Player_2</b></td><td>Competitors — Player 1 is always the favorite (better rank or lower odds)</td></tr>
+        <tr><td><b>Rank_1 / Rank_2</b></td><td>Official WTA rankings (lower = stronger)</td></tr>
+        <tr><td><b>Pts_1 / Pts_2</b></td><td>WTA ranking points of each player</td></tr>
+        <tr><td><b>Odd_1 / Odd_2</b></td><td>Bookmaker odds — lower means higher chance to win</td></tr>
+        <tr><td><b>y</b></td><td>Target variable (1 = favorite won, 0 = lost)</td></tr>
+        <tr><td><b>rank_diff</b></td><td>Difference in ranks (Rank_2 - Rank_1)</td></tr>
+        <tr><td><b>pts_diff</b></td><td>Difference in points (Pts_1 - Pts_2)</td></tr>
+        <tr><td><b>odd_diff</b></td><td>Difference in odds (Odd_2 - Odd_1)</td></tr>
+      </table>
+      <div class="card">
+        <canvas id="overviewChart"></canvas>
       </div>
     </section>
 
-    <!-- Feature Distributions -->
-    <section id="tab-distributions" style="display:none;">
-      <div class="card" style="margin-top:16px;">
-        <div class="controls">
-          <div>
-            <label for="feature">Feature to Explore</label>
-            <select id="feature"></select>
-          </div>
-          <div>
-            <label for="bins">Number of Bins</label>
-            <input type="number" id="bins" min="5" max="100" step="1" value="30">
-          </div>
-        </div>
-      </div>
-      <div class="row" style="margin-top:16px;">
-        <div class="card">
-          <div class="muted">Value Distribution</div>
-          <canvas id="histChart"></canvas>
-        </div>
-        <div class="card">
-          <div class="muted">Box Summary (min–max range)</div>
-          <canvas id="boxChart"></canvas>
-        </div>
-      </div>
+    <!-- Distributions -->
+    <section id="distributions" class="tab-content">
+      <h2>📈 Feature Distributions</h2>
+      <div class="chart-grid" id="dist-charts"></div>
     </section>
 
-    <!-- Feature Correlations -->
-    <section id="tab-correlations" style="display:none;">
-      <div class="card" style="margin-top:16px;">
-        <div class="muted">Correlation Heatmap (numeric features)</div>
-        <canvas id="heatmap" style="width:100%; height:520px;"></canvas>
-      </div>
+    <!-- Correlations -->
+    <section id="correlations" class="tab-content">
+      <h2>🔗 Feature Correlations</h2>
+      <div class="card"><canvas id="corrChart"></canvas></div>
     </section>
 
-    <!-- Players Analysis -->
-    <section id="tab-players" style="display:none;">
-      <div class="row" style="margin-top:16px;">
-        <div class="card">
-          <div class="muted">Top 10 Players by Matches Played</div>
-          <canvas id="topMatches"></canvas>
-        </div>
-        <div class="card">
-          <div class="muted">Top 10 Players by Win Rate (min 30 matches)</div>
-          <canvas id="topWins"></canvas>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px;">
-        <div class="muted">Sample of 20 Most Recent Matches (filtered)</div>
-        <table id="sample"><thead><tr><th>Date</th><th>Tournament</th><th>Surface</th><th>Player 1</th><th>Player 2</th><th>Winner</th></tr></thead><tbody></tbody></table>
-      </div>
+    <!-- Players -->
+    <section id="players" class="tab-content">
+      <h2>👩‍🎾 Players Analysis</h2>
+      <div class="card"><canvas id="topPlayersChart"></canvas></div>
+      <div class="card"><canvas id="winRatePlayersChart"></canvas></div>
     </section>
 
-    <!-- Surface Statistics -->
-    <section id="tab-surfaces" style="display:none;">
-      <div class="row" style="margin-top:16px;">
-        <div class="card">
-          <div class="muted">Win Rate by Surface (Player 1)</div>
-          <canvas id="surfWins"></canvas>
-        </div>
-        <div class="card">
-          <div class="muted">Surface Match Share</div>
-          <canvas id="surfShare"></canvas>
-        </div>
-      </div>
+    <!-- Surfaces -->
+    <section id="surfaces" class="tab-content">
+      <h2>🌍 Surface Statistics</h2>
+      <div class="card"><canvas id="surfaceDistChart"></canvas></div>
+      <div class="card"><canvas id="surfaceWinChart"></canvas></div>
     </section>
+  </main>
 
-    <div class="footer">Interactive EDA Dashboard — built for WTA Match Data</div>
-  </div>
-
-  <!-- Vendor scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="./charts.js"></script>
+  <script src="charts.js"></script>
+  <script>
+    // Tab navigation
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(sec => sec.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
 </body>
 </html>
