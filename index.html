@@ -3,38 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WTA Tennis Match EDA Dashboard</title>
+  <title>WTA Tennis EDA Dashboard</title>
 
-  <!-- Link stylesheet -->
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- PapaParse (CSV parser) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 
 <body>
-  <!-- Header -->
   <header>
     <h1>WTA Tennis EDA Dashboard</h1>
     <p class="subtitle">Exploratory Data Analysis of Women's Tennis Matches (2006–2025)</p>
   </header>
 
-  <!-- Navigation Tabs -->
   <nav>
     <button class="tab active" data-tab="overview">Overview</button>
     <button class="tab" data-tab="distributions">Distributions</button>
     <button class="tab" data-tab="correlations">Correlations</button>
     <button class="tab" data-tab="players">Players</button>
-    <button class="tab" data-tab="surfaces">Surfaces</button>
   </nav>
 
-  <!-- Main content -->
   <main>
 
-    <!-- === Overview Section === -->
+    <!-- === OVERVIEW === -->
     <section id="overview" class="tab-content active">
       <h2>Dataset Overview</h2>
 
@@ -48,9 +39,7 @@
 
       <!-- Column descriptions -->
       <table class="info-table">
-        <thead>
-          <tr><th>Column</th><th>Description</th></tr>
-        </thead>
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
         <tbody>
   <tr><td><strong>Tournament</strong></td><td>Name of the tournament <span class="badge optional">optional</span></td></tr>
   <tr><td><strong>Date</strong></td><td>Match date (used to derive <code>year</code>)</td></tr>
@@ -76,30 +65,29 @@
   <tr><td><strong>pts_diff</strong></td><td>Pts_1 − Pts_2 <span class="badge derived">derived</span></td></tr>
   <tr><td><strong>odd_diff</strong></td><td>Odd_2 − Odd_1 <span class="badge derived">derived</span></td></tr>
 </tbody>
-
-</table>
+      </table>
 
       <div class="card">
-        <canvas id="overviewChart"></canvas>
+        <canvas id="missingChart"></canvas>
       </div>
     </section>
 
-    <!-- === Distributions === -->
+    <!-- === DISTRIBUTIONS === -->
     <section id="distributions" class="tab-content">
       <h2>Feature Distributions</h2>
-      <p>Explore how numeric variables are distributed across all WTA matches.</p>
+      <p>Explore how numeric variables are distributed across all matches.</p>
       <div id="featureButtons" class="feature-buttons"></div>
       <div class="card"><canvas id="distChart"></canvas></div>
     </section>
 
-    <!-- === Correlations === -->
+    <!-- === CORRELATIONS === -->
     <section id="correlations" class="tab-content">
       <h2>Feature Correlations</h2>
       <p>Correlation matrix for numeric features. Green = positive, Red = negative.</p>
       <div class="card" id="corrContainer"></div>
     </section>
 
-    <!-- === Players === -->
+    <!-- === PLAYERS === -->
     <section id="players" class="tab-content">
       <h2>Player Statistics</h2>
       <p>Top 10 players by number of matches and their win rates.</p>
@@ -107,27 +95,19 @@
       <div class="card"><canvas id="winRatePlayersChart"></canvas></div>
     </section>
 
-    <!-- === Surfaces === -->
-    <section id="surfaces" class="tab-content">
-      <h2>Surface Analysis</h2>
-      <p>Distribution of matches and favourite win rate by surface type.</p>
-      <div class="card"><canvas id="surfaceDistChart"></canvas></div>
-      <div class="card"><canvas id="surfaceWinChart"></canvas></div>
-    </section>
-
   </main>
 
-  <!-- Script -->
   <script src="charts.js"></script>
 
   <script>
     // Tab switching logic
-    document.querySelectorAll('.tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(sec => sec.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(sec => sec.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     });
   </script>
