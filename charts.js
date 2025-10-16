@@ -1,11 +1,13 @@
-// charts.js – improved EDA dashboard for WTA data
+// charts.js – fixed for lowercase column names in wta_data.csv
 document.addEventListener('DOMContentLoaded', () => {
   Papa.parse("wta_data.csv", {
     download: true,
     header: true,
     dynamicTyping: true,
     complete: function(results) {
-      const data = results.data.filter(d => d.Date && d["Player 1"]);
+      const data = results.data.filter(d => d.date && d.player1);
+      console.log("Loaded rows:", data.length);
+      console.log("Sample row:", data[0]);
       buildEDA(data);
     }
   });
@@ -14,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function buildEDA(data) {
   // === Dataset summary ===
   const totalMatches = data.length;
-  const years = [...new Set(data.map(d => new Date(d.Date).getFullYear()))].filter(y => !isNaN(y));
-  const players = new Set(data.flatMap(d => [d["Player 1"], d["Player 2"]]));
+  const years = [...new Set(data.map(d => new Date(d.date).getFullYear()))].filter(y => !isNaN(y));
+  const players = new Set(data.flatMap(d => [d.player1, d.player2]));
   const favWins = data.filter(d => d.y === 1).length;
   document.getElementById('datasetInfo').innerHTML = `
     Dataset contains <strong>${totalMatches.toLocaleString()}</strong> matches 
@@ -27,7 +29,7 @@ function buildEDA(data) {
   // === Overview: favourite win rate by year ===
   const yearly = {};
   data.forEach(d => {
-    const year = new Date(d.Date).getFullYear();
+    const year = new Date(d.date).getFullYear();
     if (!yearly[year]) yearly[year] = { total: 0, wins: 0 };
     yearly[year].total++;
     if (d.y === 1) yearly[year].wins++;
@@ -51,7 +53,7 @@ function buildEDA(data) {
     options: { responsive: true, plugins: { legend: { display: false } } }
   });
 
-  // === Distributions: numeric features ===
+  // === Distributions ===
   const numericFeatures = ["rank_diff", "pts_diff", "odd_diff", "y"];
   const featureButtons = document.getElementById("featureButtons");
   const distChartCanvas = document.getElementById("distChart");
@@ -113,14 +115,15 @@ function buildEDA(data) {
   const corrContainer = document.getElementById("corrContainer");
   corrContainer.innerHTML = renderCorrTable(matrix, numCols);
 
-  // === Players section ===
+  // === Players ===
   const playerStats = {};
   data.forEach(d => {
-    [1, 2].forEach(i => {
-      const name = d[`Player ${i}`];
+    ["player1", "player2"].forEach((key, i) => {
+      const name = d[key];
+      if (!name) return;
       if (!playerStats[name]) playerStats[name] = { matches: 0, wins: 0 };
       playerStats[name].matches++;
-      if ((i === 1 && d.y === 1) || (i === 2 && d.y === 0)) playerStats[name].wins++;
+      if ((i === 0 && d.y === 1) || (i === 1 && d.y === 0)) playerStats[name].wins++;
     });
   });
 
@@ -157,10 +160,10 @@ function buildEDA(data) {
     options: { plugins: { legend: { display: false } } }
   });
 
-  // === Surfaces section ===
+  // === Surfaces ===
   const surfaces = {};
   data.forEach(d => {
-    const s = d.Surface || "Unknown";
+    const s = d.surface || "Unknown";
     if (!surfaces[s]) surfaces[s] = { total: 0, wins: 0 };
     surfaces[s].total++;
     if (d.y === 1) surfaces[s].wins++;
