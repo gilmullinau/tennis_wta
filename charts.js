@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     download: true,
     header: true,
     dynamicTyping: true,
-    delimiter: ";", // your file uses semicolons
+    delimiter: ",", // your file uses semicolons
     complete: function (results) {
       try {
         const data = results.data.filter(d => d.Date && d.Player_1);
