@@ -1,54 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎾 WTA Match Analytics Dashboard</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WTA Match Predictor — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#38bdf8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 24px; border-bottom: 1px solid #1f2937; position: sticky; top:0; backdrop-filter: blur(6px); background: rgba(15, 23, 42, .8); z-index: 2;}
+    h1 { margin:0; font-size: 22px; letter-spacing: .2px; }
+    .container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .grid { display: grid; gap: 16px; }
+    .grid.cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 1100px) {
+      .grid.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid.two { grid-template-columns: 1fr; }
+      .grid.three { grid-template-columns: 1fr; }
+    }
+    .card { background: var(--card); border: 1px solid #1f2937; border-radius: 16px; padding: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+    .muted { color: var(--muted); font-size: 12px; }
+    .metric { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .controls { display:flex; gap:12px; flex-wrap: wrap; align-items: end; }
+    label { font-size: 12px; color: var(--muted); display:block; margin-bottom:6px; }
+    select, input { background:#0b1220; color:#e5e7eb; border:1px solid #1f2937; border-radius:10px; padding:10px 12px; min-width:160px; }
+    canvas { width: 100% !important; height: 420px !important; }
+    .row { display:flex; gap: 16px; flex-wrap: wrap; }
+    .row .card { flex: 1 1 360px; }
+    .pill { display:inline-block; padding: 4px 8px; border: 1px solid #1f2937; border-radius:999px; font-size:12px; color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    .footer { color: var(--muted); font-size: 12px; padding: 20px; text-align: center; }
+    table { width:100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #1f2937; text-align: left; }
+  </style>
 </head>
 <body>
   <header>
-    <h1>🎾 WTA Match Data Analysis (2007–2023)</h1>
-    <p>Interactive EDA based on WTA match dataset</p>
+    <h1>WTA Match Predictor — Static Dashboard</h1>
   </header>
+  <div class="container">
+    <div class="card">
+      <div class="controls">
+        <div>
+          <label for="year">Year</label>
+          <select id="year"></select>
+        </div>
+        <div>
+          <label for="surface">Surface</label>
+          <select id="surface">
+            <option value="All">All</option>
+          </select>
+        </div>
+        <div>
+          <label for="player">Player Explorer</label>
+          <input id="player" type="text" placeholder="Type player name">
+        </div>
+        <div style="margin-left:auto">
+          <span id="coverage" class="pill">Loading…</span>
+        </div>
+      </div>
+    </div>
 
-  <main>
-    <section>
-      <h2>📅 Matches per Year</h2>
-      <div id="chart-year"></div>
-    </section>
+    <div class="grid cards" style="margin-top:16px;">
+      <div class="card">
+        <div class="muted">AUC (bookmaker baseline)</div>
+        <div id="auc" class="metric">—</div>
+      </div>
+      <div class="card">
+        <div class="muted">LogLoss (bookmaker)</div>
+        <div id="logloss" class="metric">—</div>
+      </div>
+      <div class="card">
+        <div class="muted">Brier (bookmaker)</div>
+        <div id="brier" class="metric">—</div>
+      </div>
+      <div class="card">
+        <div class="muted">Class balance (y=1)</div>
+        <div id="balance" class="metric">—</div>
+      </div>
+    </div>
 
-    <section>
-      <h2>🏟️ Surface Distribution</h2>
-      <div id="chart-surface"></div>
-    </section>
+    <div class="row" style="margin-top:16px;">
+      <div class="card">
+        <div class="muted">ROC curve (bookmaker baseline)</div>
+        <canvas id="rocChart"></canvas>
+      </div>
+      <div class="card">
+        <div class="muted">Calibration (predicted vs. actual)</div>
+        <canvas id="calibChart"></canvas>
+      </div>
+    </div>
 
-    <section>
-      <h2>🏆 Matches by Round</h2>
-      <div id="chart-round"></div>
-    </section>
+    <div class="row" style="margin-top:16px;">
+      <div class="card">
+        <div class="muted">Win rate over time (selected filters)</div>
+        <canvas id="timeChart"></canvas>
+      </div>
+      <div class="card">
+        <div class="muted">Player Explorer — rolling win% (10 matches)</div>
+        <canvas id="playerChart"></canvas>
+      </div>
+    </div>
 
-    <section>
-      <h2>📈 Rank Difference vs Win Probability</h2>
-      <div id="chart-rankdiff"></div>
-    </section>
+    <div class="card" style="margin-top:16px;">
+      <div class="muted">Head-to-head (recent, filtered)</div>
+      <table id="h2h"><thead><tr><th>Date</th><th>Tournament</th><th>Surface</th><th>Player_1</th><th>Player_2</th><th>Winner</th><th>Odd_1</th><th>Odd_2</th></tr></thead><tbody></tbody></table>
+    </div>
 
-    <section>
-      <h2>💰 Odds Distribution</h2>
-      <div id="chart-odds"></div>
-    </section>
+    <div class="footer">
+      Built for a 4-min midterm pitch. Drop your CSV as <code>wta_data.csv</code> next to this page on GitHub Pages.
+    </div>
+  </div>
 
-    <section>
-      <h2>🔗 Feature Correlation Heatmap</h2>
-      <div id="chart-corr"></div>
-    </section>
-  </main>
-
-  <footer>
-    <p>© 2025 | Data source: WTA matches dataset | Built with Plotly.js</p>
-  </footer>
-
-  <script src="js/charts.js"></script>
+  <!-- Vendor scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" integrity="sha512-fu5y1FQH0mE+g6pl2PpQY3xR+6iL6CbgpQ/0kE5/Kk9cM8F7RZ8hV2KfNfSqtF3s0Q2i7g1+gk63U6nGppw3xw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- App scripts -->
+  <script src="./charts.js"></script>
 </body>
 </html>
