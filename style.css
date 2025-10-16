@@ -1,56 +1,47 @@
 /*
-  Dark theme stylesheet for the WTA EDA dashboard.
-  This file defines colours, layout and basic animations to create a premium feel.
+  Dark theme for WTA EDA dashboard.
+  Modern layout, smooth transitions, and responsive visuals.
 */
 
-/* Colour palette variables for easy tweaking */
 :root {
-  --bg: #0d1117;            /* overall page background */
-  --bg-card: #161b22;       /* cards and table backgrounds */
-  --bg-nav: #010409;        /* navigation bar background */
-  --text-main: #c9d1d9;     /* primary text colour */
-  --text-muted: #8b949e;    /* secondary text */
-  --accent: #58a6ff;        /* primary accent colour (blue) */
-  --accent-pink: #d2a8ff;   /* secondary accent colour (pink) */
-  --accent-green: #3fb950;  /* tertiary accent (green for win rates) */
-  --border: #30363d;        /* card and table border */
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-nav: #010409;
+  --text-main: #c9d1d9;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-green: #3fb950;
+  --border: #30363d;
 }
 
-/* Base styles */
-* {
-  box-sizing: border-box;
-}
-
+/* Global */
 body {
   margin: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   background-color: var(--bg);
   color: var(--text-main);
-  line-height: 1.5;
 }
 
+/* Header */
 header {
   background: linear-gradient(90deg, #0a84ff, #0050d8);
   padding: 2rem 1rem;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 header h1 {
   margin: 0;
   font-size: 2rem;
-  font-weight: 600;
-  color: #ffffff;
+  color: #fff;
 }
 
-header .subtitle {
+.subtitle {
+  color: #d0dcf0;
   margin-top: 0.3rem;
-  font-size: 1rem;
-  color: #dfe6f3;
-  opacity: 0.9;
 }
 
-/* Navigation bar */
+/* Navigation */
 nav {
   display: flex;
   justify-content: center;
@@ -63,28 +54,27 @@ nav {
 }
 
 nav button.tab {
-  background: transparent;
+  background: none;
   border: none;
   color: var(--text-muted);
   padding: 0.6rem 1.2rem;
   margin: 0 0.3rem;
-  font-size: 0.95rem;
   border-radius: 20px;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-nav button.tab:hover {
-  background-color: rgba(88, 166, 255, 0.15);
-  color: var(--text-main);
+  transition: background 0.3s, color 0.3s;
 }
 
 nav button.tab.active {
   background-color: var(--accent);
-  color: #ffffff;
+  color: white;
 }
 
-/* Main area */
+nav button.tab:hover {
+  background-color: rgba(88,166,255,0.15);
+  color: var(--text-main);
+}
+
+/* Layout */
 main {
   padding: 2rem;
   max-width: 1200px;
@@ -92,27 +82,21 @@ main {
 }
 
 h2 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #ffffff;
+  margin-bottom: 0.5rem;
 }
 
 p {
-  margin-top: 0.5rem;
-  margin-bottom: 1.5rem;
   color: var(--text-muted);
 }
 
-/* Cards for charts */
+/* Cards */
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 canvas {
@@ -120,27 +104,24 @@ canvas {
   height: 400px !important;
 }
 
-/* Dataset info box */
+/* Dataset info */
 .dataset-info {
   background-color: #1f2a35;
   border-left: 4px solid var(--accent);
-  padding: 0.8rem 1rem;
+  padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
-  font-weight: 500;
-  color: var(--text-main);
 }
 
-/* Information table */
+/* Table */
 .info-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
-  overflow: hidden;
-  background-color: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
+  overflow: hidden;
   font-size: 0.9rem;
+  margin-bottom: 1.5rem;
 }
 
 .info-table th, .info-table td {
@@ -150,19 +131,13 @@ canvas {
 
 .info-table th {
   background-color: #1f2a35;
-  color: var(--text-main);
-  font-weight: 600;
 }
 
 .info-table tr:nth-child(even) td {
   background-color: #10161b;
 }
 
-.info-table tr:hover td {
-  background-color: #0e1924;
-}
-
-/* Feature selection buttons */
+/* Feature buttons */
 .feature-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -170,33 +145,26 @@ canvas {
   margin-bottom: 1rem;
 }
 
-.feature-buttons .feature-btn {
+.feature-btn {
   background-color: #1f2a35;
   color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-  font-size: 0.85rem;
 }
 
-.feature-buttons .feature-btn:hover {
+.feature-btn:hover {
   background-color: #2b3748;
-  color: var(--text-main);
+  color: white;
 }
 
-.feature-buttons .feature-btn.active {
+.feature-btn.active {
   background-color: var(--accent);
-  color: #ffffff;
-  border-color: var(--accent);
+  color: white;
 }
 
-/* Correlation table styling */
-#corrContainer {
-  overflow-x: auto;
-}
-
+/* Correlation table */
 .corr-table {
   width: 100%;
   border-collapse: collapse;
@@ -205,33 +173,17 @@ canvas {
 
 .corr-table th, .corr-table td {
   border: 1px solid var(--border);
-  padding: 0.5rem;
+  padding: 0.4rem;
   text-align: center;
-  min-width: 60px;
-  color: var(--text-main);
 }
 
 .corr-table th {
   background-color: #1f2a35;
-  font-weight: 600;
 }
 
-/* Highlight correlation diagonal */
-.corr-diagonal {
-  background-color: #0e1924 !important;
-  font-weight: 600;
-}
-
-/* Responsive adjustments */
+/* Responsive */
 @media (max-width: 768px) {
-  nav button.tab {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.75rem;
-  }
-  h2 {
-    font-size: 1.2rem;
-  }
-  canvas {
-    height: 300px !important;
-  }
+  main { padding: 1rem; }
+  canvas { height: 300px !important; }
+  nav button.tab { font-size: 0.8rem; padding: 0.4rem 0.7rem; }
 }
