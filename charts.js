@@ -75,25 +75,55 @@ let CHARTS = { missing: null, dist: null, topPlayers: null, winRatePlayers: null
 init();
 
 function init() {
-  Papa.parse("wta_data.csv", {
+  const csvFile = "wta_data.csv"; // 👈 имя файла, если нужно — поменяй здесь
+  const delimiters = [",", ";", "\t"];
+  let loaded = false;
+
+  // Пробуем несколько разделителей (на случай разной локали)
+  delimiters.forEach((delim) => {
+    if (loaded) return;
+    Papa.parse(csvFile, {
       download: true,
       header: true,
       dynamicTyping: true,
       skipEmptyLines: true,
       delimiter: delim,
-      // normalize headers to lower_snake_case and strip BOM
-      transformHeader: h => h
-        .replace(/^﻿/, "")            // BOM
-        .trim()
-        .replace(/\./g, "")
-        .replace(/\s+/g, "_")
-        .toLowerCase(),
-    complete: onCsvLoaded,
-    error: (err) => {
-      showDatasetInfo(`⚠️ Failed to load CSV (${err?.message || "unknown error"}). Make sure to run via a local server (e.g., "python -m http.server").`);
-    }
+      transformHeader: (h) =>
+        h
+          .trim()
+          .replace(/^﻿/, "") // убираем BOM
+          .replace(/\s+/g, "_")
+          .replace(/\./g, ""),
+      complete: (results) => {
+        const data = results?.data || [];
+        if (data.length > 10 && Object.keys(data[0] || {}).length > 2) {
+          loaded = true;
+          console.log(`✅ CSV loaded (${data.length} rows, delim='${delim}')`);
+          onCsvLoaded(results);
+        }
+      },
+      error: (err) => {
+        console.warn(`⚠️ Failed with delimiter '${delim}':`, err?.message || err);
+      },
+    });
   });
+
+  // Если через 2 секунды не удалось загрузить — показать сообщение
+  setTimeout(() => {
+    if (!loaded) {
+      showDatasetInfo(`
+        ⚠️ <b>Failed to load CSV file.</b><br>
+        Please ensure:
+        <ul style="text-align:left;display:inline-block;">
+          <li>The file <code>${csvFile}</code> is located in the same folder as <code>index.html</code>.</li>
+          <li>You are running the project via a local server (e.g. <code>python -m http.server</code>).</li>
+        </ul>
+      `);
+    }
+  }, 2000);
 }
+
+
 
 /* ============================
    Load & Sanity
