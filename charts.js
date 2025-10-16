@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     header: true,
     dynamicTyping: true,
     skipEmptyLines: true,
-    delimiter: ";",
+    delimiter: ",",
     transformHeader: h => h.trim().replace(/^﻿/, ""),
     complete: function (results) {
       try {
