@@ -3,17 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🎾 WTA Tennis EDA Dashboard</title>
+  <title>WTA Tennis EDA Dashboard</title>
+  <!-- Link to the dark theme stylesheet -->
   <link rel="stylesheet" href="style.css" />
+  <!-- Include Chart.js for visualisations -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Include PapaParse for CSV parsing -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body>
+  <!-- Header with title and subtitle -->
   <header>
-    <h1>🎾 WTA Tennis EDA Dashboard</h1>
-    <p class="subtitle">Exploratory Data Analysis of WTA Matches (2006–2025)</p>
+    <h1>WTA Tennis EDA Dashboard</h1>
+    <p class="subtitle">Interactive exploration of WTA match data (2006–2025)</p>
   </header>
 
+  <!-- Primary navigation bar -->
   <nav>
     <button class="tab active" data-tab="overview">Overview</button>
     <button class="tab" data-tab="distributions">Distributions</button>
@@ -22,54 +27,88 @@
     <button class="tab" data-tab="surfaces">Surfaces</button>
   </nav>
 
+  <!-- Main content area; each section is one tab -->
   <main>
-    <!-- === OVERVIEW === -->
+    <!-- Overview section: dataset summary, description of columns and annual win-rate chart -->
     <section id="overview" class="tab-content active">
-      <h2>📘 Dataset Overview</h2>
-
-      <div id="datasetInfo" class="dataset-info">
-        Loading dataset summary...
-      </div>
-
+      <h2>Dataset Overview</h2>
+      <!-- Dataset summary information will be inserted here by charts.js -->
+      <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
       <p>
-        This dataset contains detailed records of Women's Tennis Association (WTA) matches played between 2006 and 2025.  
-        Each row corresponds to a single match, where <b>Player_1</b> is always the <b>favorite</b> (lower ranking or odds).
+        This dataset contains detailed records of Women's Tennis Association (WTA) matches played between 2006 and 2025.  Each row corresponds to a single match, and <strong>Player&nbsp;1</strong> is always the <strong>favourite</strong> (lower ranking or lower bookmaker odds).
       </p>
-
+      <!-- Description of each column for quick reference -->
       <table class="info-table">
-        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <thead>
+          <tr><th>Column</th><th>Description</th></tr>
+        </thead>
         <tbody>
-          <tr><td><b>Tournament</b></td><td>Name of the tournament</td></tr>
-          <tr><td><b>Date</b></td><td>Date of the match</td></tr>
-          <tr><td><b>Surface</b></td><td>Type of surface: Hard, Clay, or Grass</td></tr>
-          <tr><td><b>Round</b></td><td>Stage of the tournament</td></tr>
-          <tr><td><b>Player_1 / Player_2</b></td><td>Players — Player_1 is the favorite</td></tr>
-          <tr><td><b>Rank_1 / Rank_2</b></td><td>WTA rankings (lower = stronger)</td></tr>
-          <tr><td><b>Pts_1 / Pts_2</b></td><td>Ranking points of each player</td></tr>
-          <tr><td><b>Odd_1 / Odd_2</b></td><td>Bookmaker odds — lower means higher win chance</td></tr>
-          <tr><td><b>y</b></td><td>Target variable (1 = favorite won, 0 = lost)</td></tr>
-          <tr><td><b>rank_diff</b></td><td>Rank_2 - Rank_1 (difference in ranks)</td></tr>
-          <tr><td><b>pts_diff</b></td><td>Pts_1 - Pts_2 (difference in ranking points)</td></tr>
-          <tr><td><b>odd_diff</b></td><td>Odd_2 - Odd_1 (difference in bookmaker odds)</td></tr>
+          <tr><td><strong>Tournament</strong></td><td>Name of the tournament</td></tr>
+          <tr><td><strong>Date</strong></td><td>Date when the match was played</td></tr>
+          <tr><td><strong>Court</strong></td><td>Indoor or outdoor court type</td></tr>
+          <tr><td><strong>Surface</strong></td><td>Type of surface: hard, clay or grass</td></tr>
+          <tr><td><strong>Round</strong></td><td>Stage of the tournament (e.g., First Round, Quarterfinal)</td></tr>
+          <tr><td><strong>Player&nbsp;1 / Player&nbsp;2</strong></td><td>Names of the two competitors &mdash; Player&nbsp;1 is the favourite</td></tr>
+          <tr><td><strong>Rank&nbsp;1 / Rank&nbsp;2</strong></td><td>Official WTA rankings (lower values indicate stronger players)</td></tr>
+          <tr><td><strong>Pts&nbsp;1 / Pts&nbsp;2</strong></td><td>WTA ranking points of each player</td></tr>
+          <tr><td><strong>Odd&nbsp;1 / Odd&nbsp;2</strong></td><td>Bookmaker odds &mdash; smaller odds indicate higher probability of winning</td></tr>
+          <tr><td><strong>y</strong></td><td>Target variable (1 = favourite won, 0 = favourite lost)</td></tr>
+          <tr><td><strong>rank_diff</strong></td><td>Difference in rankings: Rank_2 &minus; Rank_1</td></tr>
+          <tr><td><strong>pts_diff</strong></td><td>Difference in ranking points: Pts_1 &minus; Pts_2</td></tr>
+          <tr><td><strong>odd_diff</strong></td><td>Difference in odds: Odd_2 &minus; Odd_1</td></tr>
         </tbody>
       </table>
-
+      <!-- Canvas for annual win-rate chart -->
       <div class="card">
         <canvas id="overviewChart"></canvas>
       </div>
     </section>
 
-    <!-- Плейсхолдеры остальных вкладок -->
-    <section id="distributions" class="tab-content"><h2>📊 Distributions</h2></section>
-    <section id="correlations" class="tab-content"><h2>🔗 Correlations</h2></section>
-    <section id="players" class="tab-content"><h2>👩‍🎾 Players</h2></section>
-    <section id="surfaces" class="tab-content"><h2>🌍 Surfaces</h2></section>
+    <!-- Distributions section: interactive choice of numeric features and histogram -->
+    <section id="distributions" class="tab-content">
+      <h2>Feature Distributions</h2>
+      <p>Select a numeric feature to inspect its distribution across all matches:</p>
+      <div id="featureButtons" class="feature-buttons"></div>
+      <div class="card">
+        <canvas id="distChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Correlations section: correlation matrix as colour-coded table -->
+    <section id="correlations" class="tab-content">
+      <h2>Feature Correlations</h2>
+      <div class="card" id="corrContainer">
+        <!-- Correlation table will be injected here by charts.js -->
+      </div>
+    </section>
+
+    <!-- Players section: top players by matches and win rate -->
+    <section id="players" class="tab-content">
+      <h2>Player Statistics</h2>
+      <div class="card">
+        <canvas id="topPlayersChart"></canvas>
+      </div>
+      <div class="card">
+        <canvas id="winRatePlayersChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Surfaces section: distribution of matches and win rate per surface -->
+    <section id="surfaces" class="tab-content">
+      <h2>Surface Analysis</h2>
+      <div class="card">
+        <canvas id="surfaceDistChart"></canvas>
+      </div>
+      <div class="card">
+        <canvas id="surfaceWinChart"></canvas>
+      </div>
+    </section>
   </main>
 
+  <!-- Load the JavaScript that builds the charts -->
   <script src="charts.js"></script>
-
   <script>
-    // Tab switching logic
+    // Tab switching: toggle active class on both tabs and sections
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -81,5 +120,3 @@
   </script>
 </body>
 </html>
-
-
