@@ -11,7 +11,7 @@
 <body>
   <header>
     <h1>🎾 WTA Tennis EDA Dashboard</h1>
-    <p class="subtitle">Interactive Exploratory Data Analysis for WTA matches (2006–2025)</p>
+    <p class="subtitle">Exploratory Data Analysis of WTA Matches (2006–2025)</p>
   </header>
 
   <nav>
@@ -23,49 +23,53 @@
   </nav>
 
   <main>
-    <!-- Overview -->
+    <!-- === OVERVIEW === -->
     <section id="overview" class="tab-content active">
       <h2>📘 Dataset Overview</h2>
-      <div id="datasetInfo" class="dataset-info"></div>
+
+      <div id="datasetInfo" class="dataset-info">
+        Loading dataset summary...
+      </div>
+
       <p>
-        The dataset contains Women's Tennis Association (WTA) matches from 2006–2025.  
-        Each row corresponds to a single match where Player_1 is always the favorite.
+        This dataset contains detailed records of Women's Tennis Association (WTA) matches played between 2006 and 2025.  
+        Each row corresponds to a single match, where <b>Player_1</b> is always the <b>favorite</b> (lower ranking or odds).
       </p>
-      <div class="card"><canvas id="overviewChart"></canvas></div>
+
+      <table class="info-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><b>Tournament</b></td><td>Name of the tournament</td></tr>
+          <tr><td><b>Date</b></td><td>Date of the match</td></tr>
+          <tr><td><b>Surface</b></td><td>Type of surface: Hard, Clay, or Grass</td></tr>
+          <tr><td><b>Round</b></td><td>Stage of the tournament</td></tr>
+          <tr><td><b>Player_1 / Player_2</b></td><td>Players — Player_1 is the favorite</td></tr>
+          <tr><td><b>Rank_1 / Rank_2</b></td><td>WTA rankings (lower = stronger)</td></tr>
+          <tr><td><b>Pts_1 / Pts_2</b></td><td>Ranking points of each player</td></tr>
+          <tr><td><b>Odd_1 / Odd_2</b></td><td>Bookmaker odds — lower means higher win chance</td></tr>
+          <tr><td><b>y</b></td><td>Target variable (1 = favorite won, 0 = lost)</td></tr>
+          <tr><td><b>rank_diff</b></td><td>Rank_2 - Rank_1 (difference in ranks)</td></tr>
+          <tr><td><b>pts_diff</b></td><td>Pts_1 - Pts_2 (difference in ranking points)</td></tr>
+          <tr><td><b>odd_diff</b></td><td>Odd_2 - Odd_1 (difference in bookmaker odds)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="card">
+        <canvas id="overviewChart"></canvas>
+      </div>
     </section>
 
-    <!-- Distributions -->
-    <section id="distributions" class="tab-content">
-      <h2>📊 Feature Distributions</h2>
-      <p>Select a numeric feature to view its distribution:</p>
-      <select id="featureSelect"></select>
-      <div class="card"><canvas id="distChart"></canvas></div>
-    </section>
-
-    <!-- Correlations -->
-    <section id="correlations" class="tab-content">
-      <h2>🔗 Feature Correlations</h2>
-      <div class="card"><canvas id="corrChart"></canvas></div>
-    </section>
-
-    <!-- Players -->
-    <section id="players" class="tab-content">
-      <h2>👩‍🎾 Players Analysis</h2>
-      <div class="card"><canvas id="topPlayersChart"></canvas></div>
-      <div class="card"><canvas id="winRatePlayersChart"></canvas></div>
-    </section>
-
-    <!-- Surfaces -->
-    <section id="surfaces" class="tab-content">
-      <h2>🌍 Surface Statistics</h2>
-      <div class="card"><canvas id="surfaceDistChart"></canvas></div>
-      <div class="card"><canvas id="surfaceWinChart"></canvas></div>
-    </section>
+    <!-- Плейсхолдеры остальных вкладок -->
+    <section id="distributions" class="tab-content"><h2>📊 Distributions</h2></section>
+    <section id="correlations" class="tab-content"><h2>🔗 Correlations</h2></section>
+    <section id="players" class="tab-content"><h2>👩‍🎾 Players</h2></section>
+    <section id="surfaces" class="tab-content"><h2>🌍 Surfaces</h2></section>
   </main>
 
   <script src="charts.js"></script>
+
   <script>
-    // Tab switching
+    // Tab switching logic
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
