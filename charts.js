@@ -1,26 +1,27 @@
 document.addEventListener("DOMContentLoaded", () => {
-  Papa.parse("wta_data.csv", {
-    download: true,
-    header: true,
-    dynamicTyping: true,
-    skipEmptyLines: true,
-    delimiter: ",",
-    transformHeader: h => h.trim().replace(/^﻿/, ""),
-    complete: function (results) {
-      try {
-        const data = results.data.filter(d => d.Date && d.Player_1);
-        if (!data || data.length < 10) {
-          showError("⚠️ Dataset not loaded correctly or too few rows.");
-          return;
-        }
-        console.log("✅ Loaded rows:", data.length);
-        buildEDA(data);
-      } catch (err) {
-        console.error(err);
-        showError("❌ Error parsing dataset.");
+Papa.parse("wta_data.csv", {
+  download: true,
+  header: true,
+  dynamicTyping: true,
+  skipEmptyLines: true,
+  delimiter: "", // 🟢 автоопределение
+  transformHeader: h => h.trim().replace(/^﻿/, ""),
+  complete: function (results) {
+    try {
+      console.log("Raw data preview:", results.data.slice(0, 5)); // отладка
+      const data = results.data.filter(d => d.Date && d.Player_1);
+      console.log("✅ Parsed rows:", data.length);
+      if (!data || data.length < 10) {
+        showError("⚠️ Dataset not loaded correctly or too few rows.");
+        return;
       }
+      buildEDA(data);
+    } catch (err) {
+      console.error("❌ Parsing error:", err);
+      showError("❌ Error parsing dataset.");
     }
-  });
+  }
+});
 });
 
 function showError(msg) {
