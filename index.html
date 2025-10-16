@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WTA Tennis EDA Dashboard</title>
+  <title>🎾 WTA Tennis EDA Dashboard</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
@@ -11,54 +11,35 @@
 <body>
   <header>
     <h1>🎾 WTA Tennis EDA Dashboard</h1>
-    <p class="subtitle">Exploratory Data Analysis for WTA matches (2006–2025)</p>
+    <p class="subtitle">Interactive Exploratory Data Analysis for WTA matches (2006–2025)</p>
   </header>
 
   <nav>
-    <button class="tab active" data-tab="overview">Dataset Overview</button>
-    <button class="tab" data-tab="distributions">Feature Distributions</button>
-    <button class="tab" data-tab="correlations">Feature Correlations</button>
-    <button class="tab" data-tab="players">Players Analysis</button>
-    <button class="tab" data-tab="surfaces">Surface Statistics</button>
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="distributions">Distributions</button>
+    <button class="tab" data-tab="correlations">Correlations</button>
+    <button class="tab" data-tab="players">Players</button>
+    <button class="tab" data-tab="surfaces">Surfaces</button>
   </nav>
 
   <main>
     <!-- Overview -->
     <section id="overview" class="tab-content active">
       <h2>📘 Dataset Overview</h2>
-      <p>
-        This dataset contains detailed information about Women's Tennis Association (WTA) matches between 2006 and 2025. Each row represents a single match.
-        Below you can see all available variables and their meanings.
-      </p>
-
       <div id="datasetInfo" class="dataset-info"></div>
-
-      <table class="info-table">
-        <tr><th>Column</th><th>Description</th></tr>
-        <tr><td><b>Tournament</b></td><td>Name of the tournament</td></tr>
-        <tr><td><b>Date</b></td><td>Date of the match</td></tr>
-        <tr><td><b>Court</b></td><td>Indoor or Outdoor court type</td></tr>
-        <tr><td><b>Surface</b></td><td>Type of surface: Hard, Clay, or Grass</td></tr>
-        <tr><td><b>Round</b></td><td>Tournament stage (1st Round, Quarterfinal, etc.)</td></tr>
-        <tr><td><b>Player_1 / Player_2</b></td><td>Competitors — Player 1 is always the favorite (better rank or lower odds)</td></tr>
-        <tr><td><b>Rank_1 / Rank_2</b></td><td>Official WTA rankings (lower = stronger)</td></tr>
-        <tr><td><b>Pts_1 / Pts_2</b></td><td>WTA ranking points of each player</td></tr>
-        <tr><td><b>Odd_1 / Odd_2</b></td><td>Bookmaker odds — lower means higher chance to win</td></tr>
-        <tr><td><b>y</b></td><td>Target variable (1 = favorite won, 0 = lost)</td></tr>
-        <tr><td><b>rank_diff</b></td><td>Difference in ranks (Rank_2 - Rank_1)</td></tr>
-        <tr><td><b>pts_diff</b></td><td>Difference in points (Pts_1 - Pts_2)</td></tr>
-        <tr><td><b>odd_diff</b></td><td>Difference in odds (Odd_2 - Odd_1)</td></tr>
-      </table>
-
-      <div class="card">
-        <canvas id="overviewChart"></canvas>
-      </div>
+      <p>
+        The dataset contains Women's Tennis Association (WTA) matches from 2006–2025.  
+        Each row corresponds to a single match where Player_1 is always the favorite.
+      </p>
+      <div class="card"><canvas id="overviewChart"></canvas></div>
     </section>
 
     <!-- Distributions -->
     <section id="distributions" class="tab-content">
-      <h2>📈 Feature Distributions</h2>
-      <div class="chart-grid" id="dist-charts"></div>
+      <h2>📊 Feature Distributions</h2>
+      <p>Select a numeric feature to view its distribution:</p>
+      <select id="featureSelect"></select>
+      <div class="card"><canvas id="distChart"></canvas></div>
     </section>
 
     <!-- Correlations -->
@@ -82,10 +63,9 @@
     </section>
   </main>
 
-  <!-- Scripts -->
   <script src="charts.js"></script>
   <script>
-    // Tab navigation
+    // Tab switching
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -97,3 +77,5 @@
   </script>
 </body>
 </html>
+
+

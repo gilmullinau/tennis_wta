@@ -1,42 +1,39 @@
 body {
   font-family: "Inter", sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #f3f4f6;
+  color: #1f2937;
   margin: 0;
-  padding: 0;
 }
 
 header {
-  text-align: center;
-  padding: 1.5rem 1rem;
-  background-color: #2563eb;
+  background: linear-gradient(90deg, #2563eb, #1e40af);
   color: white;
-}
-
-.subtitle {
-  font-size: 0.9rem;
-  opacity: 0.85;
+  text-align: center;
+  padding: 1.5rem;
 }
 
 nav {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.8rem;
   background-color: #e2e8f0;
+  gap: 0.5rem;
+  padding: 0.5rem;
 }
 
 button.tab {
   background: #cbd5e1;
   border: none;
-  padding: 0.5rem 1rem;
   border-radius: 8px;
+  padding: 0.5rem 1rem;
   cursor: pointer;
   font-weight: 500;
+  transition: all 0.2s;
 }
-
+button.tab:hover {
+  background: #94a3b8;
+}
 button.tab.active {
-  background-color: #2563eb;
+  background: #2563eb;
   color: white;
 }
 
@@ -44,20 +41,12 @@ main {
   padding: 1rem 2rem;
 }
 
-section {
-  display: none;
-}
-
-section.active {
-  display: block;
-}
-
 .card {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   padding: 1rem;
   margin: 1rem 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .chart-grid {
@@ -66,18 +55,13 @@ section.active {
   gap: 1rem;
 }
 
-.info-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin-top: 1rem;
+.dataset-info {
+  background: #e0f2fe;
+  border-left: 5px solid #2563eb;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0 1rem 0;
+  border-radius: 6px;
+  font-weight: 500;
 }
 
-.info-table th, .info-table td {
-  border: 1px solid #cbd5e1;
-  padding: 0.5rem;
-  text-align: left;
-}
 
-.info-table th {
-  background-color: #e2e8f0;
-}
