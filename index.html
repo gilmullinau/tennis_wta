@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WTA Tennis Analytics Dashboard</title>
+  <title>🎾 WTA Tennis Analytics Dashboard</title>
 
   <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -16,12 +16,13 @@
     <p class="subtitle">Exploratory Data Analysis of Women's Tennis Matches (2006–2025)</p>
   </header>
 
-  <!-- Навигация-якоря -->
+  <!-- Навигация -->
   <nav>
     <button onclick="scrollToSection('overview')">Overview</button>
     <button onclick="scrollToSection('distributions')">Distributions</button>
     <button onclick="scrollToSection('correlations')">Correlations</button>
     <button onclick="scrollToSection('players')">Players</button>
+    <button onclick="scrollToSection('features')">Model Features</button>
   </nav>
 
   <main>
@@ -90,6 +91,48 @@
       </div>
     </section>
 
+    <hr class="divider"/>
+
+    <!-- === MODEL FEATURES === -->
+    <section id="features">
+      <h2>Selected Features for Neural Network Modeling</h2>
+      <p>
+        The following features were selected based on exploratory analysis, domain understanding, and correlation relevance.
+        Variables marked as <span class="badge leakage">leakage</span> or <span class="badge optional">optional</span> are excluded from the predictive model.
+      </p>
+
+      <table class="info-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Use in Model</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><b>rank_diff</b></td><td>Numeric</td><td>Rank₂ − Rank₁</td><td>✅ Yes</td></tr>
+          <tr><td><b>pts_diff</b></td><td>Numeric</td><td>Pts₁ − Pts₂</td><td>✅ Yes</td></tr>
+          <tr><td><b>odd_diff</b></td><td>Numeric</td><td>Odd₂ − Odd₁ (lower odds ⇒ higher chance)</td><td>✅ Yes</td></tr>
+          <tr><td><b>h2h_advantage</b></td><td>Numeric</td><td>+1 if Player₁ leads H2H, −1 if Player₂</td><td>✅ Yes</td></tr>
+          <tr><td><b>last_winner</b></td><td>Numeric</td><td>+1 if Player₁ won last mutual match</td><td>✅ Yes</td></tr>
+          <tr><td><b>surface_winrate_adv</b></td><td>Numeric</td><td>Surface-specific winrate difference</td><td>✅ Yes</td></tr>
+          <tr><td><b>year</b></td><td>Numeric</td><td>Match year (trend control)</td><td>✅ Yes</td></tr>
+          <tr><td><b>Surface</b></td><td>Categorical</td><td>Surface type (hard/clay/grass)</td><td>✅ Encoded</td></tr>
+          <tr><td><b>Court</b></td><td>Categorical</td><td>Indoor / Outdoor</td><td>✅ Encoded</td></tr>
+          <tr><td><b>Round</b></td><td>Categorical</td><td>Tournament round (R32, QF, SF, F)</td><td>✅ Encoded</td></tr>
+          <tr><td><b>Player_1 / Player_2</b></td><td>Text</td><td>Player names (used for H2H only)</td><td>❌ No</td></tr>
+          <tr><td><b>Winner</b></td><td>Text</td><td>Match winner (reveals target)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
+          <tr><td><b>Score</b></td><td>Text</td><td>Final score (reveals outcome)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
+          <tr><td><b>Tournament</b></td><td>Categorical</td><td>Tournament name (many unique values)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:1rem; font-size:0.95rem; color:#a0a0a0;">
+        <em>Feature selection focuses on interpretable, predictive, and non-leaking variables suitable for Neural Network classification of match outcomes.</em>
+      </p>
+    </section>
+
   </main>
 
   <script src="charts.js"></script>
@@ -155,6 +198,36 @@
       border: 1px solid #30363d;
       padding: 0.4rem 0.6rem;
       border-radius: 6px;
+    }
+
+    /* Таблица фичей */
+    #features {
+      margin-bottom: 4rem;
+    }
+
+    .info-table th, .info-table td {
+      padding: 0.6rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .info-table th {
+      background-color: #161b22;
+      color: #c9d1d9;
+    }
+
+    .badge.leakage {
+      background-color: #ff5555;
+      color: white;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .badge.optional {
+      background-color: #9c9c9c;
+      color: white;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
     }
   </style>
 </body>
