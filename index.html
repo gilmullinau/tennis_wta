@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WTA Tennis EDA Dashboard</title>
+  <title>WTA Tennis Analytics Dashboard</title>
 
   <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,95 +12,82 @@
 
 <body>
   <header>
-    <h1>WTA Tennis EDA Dashboard</h1>
+    <h1>🎾 WTA Tennis Analytics Dashboard</h1>
     <p class="subtitle">Exploratory Data Analysis of Women's Tennis Matches (2006–2025)</p>
   </header>
 
+  <!-- Навигация-якоря -->
   <nav>
-    <button class="tab active" data-tab="overview">Overview</button>
-    <button class="tab" data-tab="distributions">Distributions</button>
-    <button class="tab" data-tab="correlations">Correlations</button>
-    <button class="tab" data-tab="players">Players</button>
+    <button onclick="scrollToSection('overview')">Overview</button>
+    <button onclick="scrollToSection('distributions')">Distributions</button>
+    <button onclick="scrollToSection('correlations')">Correlations</button>
+    <button onclick="scrollToSection('players')">Players</button>
   </nav>
 
   <main>
 
     <!-- === OVERVIEW === -->
-    <section id="overview" class="tab-content active">
+    <section id="overview">
       <h2>Dataset Overview</h2>
-
       <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
-
-      <p>
-        This dataset contains records of Women's Tennis Association (WTA) matches.  
-        Each row represents a single match. <strong>Player&nbsp;1</strong> is normalized to be the <strong>favourite</strong>
-        (lower WTA ranking or lower bookmaker odds).
-      </p>
-
-      <!-- Column descriptions -->
-      <table class="info-table">
-        <thead><tr><th>Column</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Tournament</strong></td><td>Name of the tournament <span class="badge optional">optional</span></td></tr>
-          <tr><td><strong>Date</strong></td><td>Match date (used to derive <code>year</code>)</td></tr>
-          <tr><td><strong>Court</strong></td><td>Indoor / Outdoor</td></tr>
-          <tr><td><strong>Surface</strong></td><td>Surface type: hard, clay, grass</td></tr>
-          <tr><td><strong>Round</strong></td><td>Tournament stage (e.g., R32, QF, SF, F)</td></tr>
-
-          <tr><td><strong>Best of</strong></td><td>Sets per match (WTA is usually Bo3) <span class="badge optional">optional</span></td></tr>
-
-          <tr><td><strong>Player_1 / Player_2</strong></td><td>Competitor names — Player_1 is the favourite <span class="badge optional">optional (ID)</span></td></tr>
-          <tr><td><strong>Winner</strong></td><td>Winner name (reveals outcome) <span class="badge leakage">leakage</span></td></tr>
-
-          <tr><td><strong>Rank_1 / Rank_2</strong></td><td>Official WTA rankings (lower rank is stronger)</td></tr>
-          <tr><td><strong>Pts_1 / Pts_2</strong></td><td>WTA ranking points</td></tr>
-          <tr><td><strong>Odd_1 / Odd_2</strong></td><td>Bookmaker odds (smaller ⇒ higher implied win probability)</td></tr>
-
-          <tr><td><strong>Score</strong></td><td>Final score (reveals outcome) <span class="badge leakage">leakage</span> <span class="badge optional">optional</span></td></tr>
-
-          <tr><td><strong>y</strong></td><td>Target: 1 = favourite (Player_1) won, 0 = lost</td></tr>
-          <tr><td><strong>year</strong></td><td>Calendar year (derived from Date) <span class="badge derived">derived</span> <span class="badge optional">optional</span></td></tr>
-
-          <tr><td><strong>rank_diff</strong></td><td><code>Rank_2 − Rank_1</code> — positive ⇒ favourite stronger by rank <span class="badge derived">derived</span></td></tr>
-          <tr><td><strong>pts_diff</strong></td><td><code>Pts_1 − Pts_2</code> — positive ⇒ favourite has more points <span class="badge derived">derived</span></td></tr>
-          <tr><td><strong>odd_diff</strong></td><td><code>Odd_2 − Odd_1</code> — positive ⇒ favourite has lower odds <span class="badge derived">derived</span></td></tr>
-
-          <!-- NEW FEATURES -->
-          <tr><td><strong>h2h_advantage</strong></td>
-              <td>Head-to-head advantage before the match: <code>+1</code> = Player_1 leads, <code>−1</code> = Player_2 leads, <code>0</code> = even or no prior meetings <span class="badge derived">derived</span></td></tr>
-          <tr><td><strong>last_winner</strong></td>
-              <td>Result of their last mutual match: <code>+1</code> = Player_1 won, <code>−1</code> = Player_2 won, <code>0</code> = first meeting <span class="badge derived">derived</span></td></tr>
-          <tr><td><strong>surface_winrate_adv</strong></td>
-              <td>Difference in historical win rates on this surface (<code>Player_1 − Player_2</code>) before the match; range roughly <code>[−1, 1]</code> <span class="badge derived">derived</span></td></tr>
-        </tbody>
-      </table>
-
       <div class="card">
+        <h3>Missing Values by Feature</h3>
         <canvas id="missingChart"></canvas>
       </div>
     </section>
 
+    <hr class="divider"/>
+
     <!-- === DISTRIBUTIONS === -->
-    <section id="distributions" class="tab-content">
+    <section id="distributions">
       <h2>Feature Distributions</h2>
       <p>Select a numeric feature to see its histogram.</p>
       <div id="featureButtons" class="feature-buttons"></div>
       <div class="card"><canvas id="distChart"></canvas></div>
     </section>
 
+    <hr class="divider"/>
+
     <!-- === CORRELATIONS === -->
-    <section id="correlations" class="tab-content">
+    <section id="correlations">
       <h2>Feature Correlations</h2>
       <p>Correlation matrix for numeric features. Green = positive, Red = negative.</p>
       <div class="card" id="corrContainer"></div>
     </section>
 
+    <hr class="divider"/>
+
     <!-- === PLAYERS === -->
-    <section id="players" class="tab-content">
-      <h2>Player Statistics</h2>
-      <p>Top 10 players by number of matches and their win rates.</p>
-      <div class="card"><canvas id="topPlayersChart"></canvas></div>
-      <div class="card"><canvas id="winRatePlayersChart"></canvas></div>
+    <section id="players">
+      <h2>Player Analytics</h2>
+      <p>Explore top players, win rates, surface performance and yearly trends.</p>
+
+      <div class="filter-container">
+        <label for="yearSelect">Select year:</label>
+        <select id="yearSelect"></select>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🏆 Top Players by Wins</h3>
+          <canvas id="topWinsChart"></canvas>
+        </div>
+        <div class="card">
+          <h3>💪 Win Rate (%)</h3>
+          <canvas id="winRateChart"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🎾 Matches by Surface</h3>
+          <canvas id="surfaceChart"></canvas>
+        </div>
+        <div class="card">
+          <h3>📈 Win Rate Trend by Year</h3>
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -108,16 +95,67 @@
   <script src="charts.js"></script>
 
   <script>
-    // Tab switching logic
-    document.querySelectorAll(".tab").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".tab-content").forEach(sec => sec.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById(btn.dataset.tab).classList.add("active");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      });
-    });
+    // Плавная прокрутка по секциям
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
   </script>
+
+  <style>
+    hr.divider {
+      border: 0;
+      border-top: 1px solid #30363d;
+      margin: 3rem 0;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      background-color: #010409;
+      padding: 0.7rem;
+      border-bottom: 1px solid #30363d;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    nav button {
+      background: none;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 0.5rem 1rem;
+      margin: 0 0.4rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    nav button:hover {
+      background-color: rgba(88,166,255,0.15);
+      color: #58a6ff;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .filter-container {
+      margin: 1rem 0 2rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .filter-container select {
+      background: #1f2a35;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+    }
+  </style>
 </body>
 </html>
