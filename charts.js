@@ -1,236 +1,349 @@
-/* charts.js — loads wta_data.csv and renders metrics + charts using Chart.js
- * Expected columns: Date, Surface, Player_1, Player_2, Winner, y, Odd_1, Odd_2
- * Optional engineered features are ignored here.
+/* charts.js — EDA-only dashboard for WTA data.
+ * Loads wta_data.csv using PapaParse and renders multiple EDA views.
+ * Assumes columns: Date, Surface, Player_1, Player_2, y (+ many numeric features).
  */
 
-// Helpers
-function parseDate(s) { const d = new Date(s); return isNaN(d) ? null : d; }
-function unique(arr) { return Array.from(new Set(arr)); }
-function toFixed(val, n=3) { return (val != null && isFinite(val)) ? Number(val).toFixed(n) : '—'; }
-function rocAucScore(y, p) {
-  // Sort by predicted prob descending
-  const pairs = y.map((yy, i) => [p[i], yy]).sort((a,b)=>b[0]-a[0]);
-  let tp=0, fp=0, tn=0, fn=0;
-  const P = y.reduce((s,v)=>s+(v===1?1:0),0);
-  const N = y.length - P;
-  let auc = 0, prevFpr = 0, prevTpr = 0;
-  let lastScore = null;
-  let tpCount = 0, fpCount = 0;
-  for (const [score, label] of pairs) {
-    if (lastScore !== null && score !== lastScore) {
-      const tpr = tpCount / P;
-      const fpr = fpCount / N;
-      auc += (fpr - prevFpr) * (tpr + prevTpr) / 2;
-      prevFpr = fpr; prevTpr = tpr;
-    }
-    if (label === 1) tpCount++; else fpCount++;
-    lastScore = score;
+// ---- Utilities
+function parseDate(s){ const d=new Date(s); return isNaN(d)?null:d; }
+function unique(a){ return Array.from(new Set(a)); }
+function isFiniteNumber(x){ return typeof x==='number' && isFinite(x); }
+function quantile(arr, q){
+  const v = arr.slice().sort((a,b)=>a-b);
+  const pos = (v.length-1)*q;
+  const base = Math.floor(pos);
+  const rest = pos-base;
+  if(v[base+1]!==undefined) return v[base] + rest*(v[base+1]-v[base]);
+  return v[base];
+}
+function hist(data, bins){
+  const xs = data.filter(isFiniteNumber);
+  if(xs.length===0) return {edges:[],counts:[]};
+  const min = Math.min(...xs), max = Math.max(...xs);
+  const edges = Array.from({length:bins+1}, (_,i)=> min + (i*(max-min))/bins);
+  const counts = Array(bins).fill(0);
+  for(const x of xs){
+    let b = Math.floor((x-min)/(max-min+1e-12)*bins);
+    if(b===bins) b=bins-1;
+    counts[b]++;
   }
-  const tpr = tpCount / P;
-  const fpr = fpCount / N;
-  auc += (fpr - prevFpr) * (tpr + prevTpr) / 2;
-  return auc;
+  return {edges,counts};
 }
 
-function logLoss(y, p, eps=1e-15) {
-  let s = 0; const n = y.length;
-  for (let i=0;i<n;i++) {
-    const pi = Math.min(1-eps, Math.max(eps, p[i]));
-    s += - (y[i]===1 ? Math.log(pi) : Math.log(1-pi));
-  }
-  return s/n;
-}
-function brier(y, p) {
-  let s = 0; const n = y.length;
-  for (let i=0;i<n;i++) { const d = (p[i] - (y[i]===1?1:0)); s += d*d; }
-  return s/n;
-}
-function impliedProb(o1, o2) {
-  const p1 = 1/parseFloat(o1), p2 = 1/parseFloat(o2);
-  if (!isFinite(p1) || !isFinite(p2)) return null;
-  const s = p1 + p2; return p1/s;
-}
-
-// Global state
+// Global
 let DATA = [];
-let rocChart, calibChart, timeChart, playerChart;
+let NUMERIC_COLS = [];
+let charts = {};
 
-function filterData() {
+// ---- Filters and tabs
+function filterData(){
   const yearSel = document.getElementById('year').value;
-  const surfaceSel = document.getElementById('surface').value;
-  return DATA.filter(r => {
+  const surfSel = document.getElementById('surface').value;
+  return DATA.filter(r=>{
     const d = parseDate(r.Date);
-    const okYear = (yearSel === 'All') || (d && d.getFullYear().toString() === yearSel);
-    const okSurf = (surfaceSel === 'All') || (String(r.Surface) === surfaceSel);
-    return okYear && okSurf;
+    const okY = (yearSel==='All') || (d && d.getFullYear().toString()===yearSel);
+    const okS = (surfSel==='All') || (String(r.Surface)===surfSel);
+    return okY && okS;
+  });
+}
+function switchTab(name){
+  for(const id of ['overview','distributions','correlations','players','surfaces']){
+    const el = document.getElementById('tab-'+id);
+    if(!el) continue;
+    el.style.display = (id===name)?'block':'none';
+  }
+  // refresh specific content on tab open
+  if(name==='overview') renderOverview();
+  if(name==='distributions') renderDistribution();
+  if(name==='correlations') renderCorrelations();
+  if(name==='players') renderPlayers();
+  if(name==='surfaces') renderSurfaces();
+}
+
+// ---- Overview
+function renderOverview(){
+  const rows = filterData();
+  document.getElementById('rows').textContent = rows.length.toLocaleString();
+  document.getElementById('cols').textContent = Object.keys(rows[0]||{}).length;
+
+  // dates
+  const dates = rows.map(r=>parseDate(r.Date)).filter(Boolean).sort((a,b)=>a-b);
+  const dateText = dates.length? `${dates[0].toISOString().slice(0,10)} → ${dates[dates.length-1].toISOString().slice(0,10)}` : '—';
+  document.getElementById('dates').textContent = dateText;
+
+  // class balance
+  const y = rows.map(r=>Number(r.y)).filter(x=>x===0||x===1);
+  const bal = y.length? (y.reduce((s,v)=>s+v,0)/y.length) : null;
+  document.getElementById('balance').textContent = (bal!=null? bal.toFixed(3):'—');
+
+  // missingness (top 12)
+  const cols = Object.keys(rows[0]||{});
+  const missCounts = cols.map(c=>{
+    let m=0; for(const r of rows){ if(r[c]===null || r[c]===undefined || r[c]==='') m++; }
+    return {col:c, miss:m};
+  }).sort((a,b)=>b.miss-a.miss).slice(0,12);
+  const mlabels = missCounts.map(x=>x.col);
+  const mvals = missCounts.map(x=>x.miss);
+  if(charts.missing) charts.missing.destroy();
+  charts.missing = new Chart(document.getElementById('missingChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: mlabels, datasets:[{ label:'Missing', data: mvals }]},
+    options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  // matches per year
+  const perYear = {};
+  for(const r of rows){ const d=parseDate(r.Date); if(!d) continue; const y=d.getFullYear(); perYear[y]=(perYear[y]||0)+1; }
+  const years = Object.keys(perYear).sort();
+  const counts = years.map(y=>perYear[y]);
+  if(charts.years) charts.years.destroy();
+  charts.years = new Chart(document.getElementById('yearChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: years, datasets:[{ label:'Matches', data: counts }]},
+    options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
   });
 }
 
-function refresh() {
-  const filtered = filterData();
-  // Build vectors
-  const y = [], p = [], dates = [];
-  for (const r of filtered) {
-    const prob = impliedProb(r.Odd_1, r.Odd_2);
-    if (prob != null && r.y !== '' && r.y !== null && r.y !== undefined) {
-      y.push(Number(r.y));
-      p.push(prob);
-      dates.push(parseDate(r.Date));
+// ---- Distributions
+function populateFeatureList(){
+  const sample = DATA[0] || {};
+  const numeric = [];
+  for(const k of Object.keys(sample)){
+    // gather over many rows to be sure
+    let isNum = true, checked=0;
+    for(const r of DATA){
+      const v = r[k];
+      if(v===null || v===undefined || v==='') continue;
+      if(!isFiniteNumber(v)) { isNum=false; break; }
+      checked++; if(checked>50) break;
+    }
+    if(isNum) numeric.push(k);
+  }
+  NUMERIC_COLS = numeric;
+  const sel = document.getElementById('feature');
+  sel.innerHTML = numeric.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+function renderDistribution(){
+  const rows = filterData();
+  const feat = document.getElementById('feature').value || NUMERIC_COLS[0];
+  const bins = Math.max(5, Math.min(100, parseInt(document.getElementById('bins').value||30)));
+
+  const values = rows.map(r=>Number(r[feat])).filter(isFiniteNumber);
+  const {edges,counts} = hist(values, bins);
+  const centers = edges.slice(0,-1).map((e,i)=> (e+edges[i+1])/2);
+
+  if(charts.hist) charts.hist.destroy();
+  charts.hist = new Chart(document.getElementById('histChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: centers, datasets:[{ label: feat, data: counts }]},
+    options: { responsive:true, maintainAspectRatio:false, scales:{ x:{ ticks:{callback:(v,idx)=>centers[idx].toFixed(2)} }, y:{ beginAtZero:true } } }
+  });
+
+  // Boxplot approximation (min, q1, median, q3, max)
+  if(charts.box) charts.box.destroy();
+  if(values.length){
+    const q1=quantile(values,0.25), q2=quantile(values,0.5), q3=quantile(values,0.75);
+    const min=Math.min(...values), max=Math.max(...values);
+    charts.box = new Chart(document.getElementById('boxChart').getContext('2d'), {
+      type: 'bar',
+      data: { labels: [feat], datasets:[
+        { label:'Min', data:[min] },
+        { label:'Q1', data:[q1] },
+        { label:'Median', data:[q2] },
+        { label:'Q3', data:[q3] },
+        { label:'Max', data:[max] },
+      ]},
+      options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:false } } }
+    });
+  }
+}
+
+// ---- Correlations (heatmap on canvas 2D)
+function computeCorrelationMatrix(rows, cols){
+  const n = cols.length;
+  const mat = Array.from({length:n}, ()=> Array(n).fill(0));
+  const colVals = cols.map(c => rows.map(r=>Number(r[c])).filter(isFiniteNumber));
+  // align by index lengths: use pairwise over intersection by position (approximate for EDA)
+  for(let i=0;i<n;i++){
+    for(let j=i;j<n;j++){
+      const a = colVals[i], b = colVals[j];
+      const m = Math.min(a.length, b.length, 5000);
+      if(m<20){ mat[i][j]=mat[j][i]=NaN; continue; }
+      let sa=0,sb=0; for(let k=0;k<m;k++){ sa+=a[k]; sb+=b[k]; }
+      const ma=sa/m, mb=sb/m;
+      let cov=0, va=0, vb=0;
+      for(let k=0;k<m;k++){ const da=a[k]-ma, db=b[k]-mb; cov+=da*db; va+=da*da; vb+=db*db; }
+      const denom = Math.sqrt(va*vb);
+      const r = denom>0 ? (cov/denom) : 0;
+      mat[i][j]=mat[j][i]=r;
     }
   }
-
-  // Metrics
-  const auc = (y.length>0) ? rocAucScore(y, p) : null;
-  const ll = (y.length>0) ? logLoss(y, p) : null;
-  const br = (y.length>0) ? brier(y, p) : null;
-  const bal = (y.length>0) ? y.reduce((s,v)=>s+v,0)/y.length : null;
-  document.getElementById('auc').textContent = toFixed(auc);
-  document.getElementById('logloss').textContent = toFixed(ll);
-  document.getElementById('brier').textContent = toFixed(br);
-  document.getElementById('balance').textContent = toFixed(bal);
-
-  // ROC points (threshold sweep)
-  const pairs = y.map((yy,i)=>[p[i], yy]).sort((a,b)=>b[0]-a[0]);
-  const P = y.reduce((s,v)=>s+(v===1?1:0),0);
-  const N = y.length - P;
-  let tp=0, fp=0;
-  const rocX=[], rocY=[];
-  let last = null;
-  for (const [score,label] of pairs) {
-    if (last!==null && score!==last) {
-      rocX.push(fp/N); rocY.push(tp/P);
-    }
-    if (label===1) tp++; else fp++;
-    last=score;
+  return mat;
+}
+function renderHeatmapCanvas(canvas, labels, mat){
+  const ctx = canvas.getContext('2d');
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0,0,W,H);
+  const n = labels.length;
+  if(n===0) return;
+  const padL=120, padT=40;
+  const gridW = W - padL - 20;
+  const gridH = H - padT - 20;
+  const cellW = gridW / n, cellH = gridH / n;
+  // axes labels
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px Inter, sans-serif';
+  for(let i=0;i<n;i++){
+    // y labels
+    ctx.fillText(labels[i], 10, padT + i*cellH + cellH*0.6);
+    // x labels (rotated)
+    ctx.save();
+    ctx.translate(padL + i*cellW + cellW*0.5, 20);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText(labels[i], 0, 0);
+    ctx.restore();
   }
-  rocX.push(fp/N); rocY.push(tp/P);
-
-  // Calibration bins
-  const bins = 10;
-  const binSums = Array(bins).fill(0);
-  const binCounts = Array(bins).fill(0);
-  for (let i=0;i<p.length;i++) {
-    let b = Math.min(bins-1, Math.max(0, Math.floor(p[i]*bins)));
-    binSums[b] += y[i];
-    binCounts[b] += 1;
-  }
-  const calibX = [], calibY = [];
-  for (let b=0;b<bins;b++) {
-    if (binCounts[b] > 0) {
-      calibX.push((b+0.5)/bins);
-      calibY.push(binSums[b]/binCounts[b]);
+  // cells
+  for(let i=0;i<n;i++){
+    for(let j=0;j<n;j++){
+      let v = mat[i][j];
+      if(!isFinite(v)) v=0;
+      // color from blue (-1) to white (0) to red (+1)
+      const r = v>0 ? Math.floor(255*v) : 0;
+      const b = v<0 ? Math.floor(255*(-v)) : 0;
+      const g = 40;
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(padL + j*cellW, padT + i*cellH, cellW, cellH);
     }
   }
+}
+function renderCorrelations(){
+  const rows = filterData();
+  const cols = NUMERIC_COLS.filter(c=>c!=='y'); // exclude target for cleaner view
+  const maxCols = Math.min(cols.length, 18); // limit for readability
+  const useCols = cols.slice(0, maxCols);
+  const mat = computeCorrelationMatrix(rows, useCols);
+  const canvas = document.getElementById('heatmap');
+  renderHeatmapCanvas(canvas, useCols, mat);
+}
 
-  // Time chart (monthly win rate of Player_1)
-  const monthly = {};
-  for (let i=0;i<filtered.length;i++) {
-    const d = parseDate(filtered[i].Date); if (!d) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if (!monthly[key]) monthly[key] = {win:0, tot:0};
-    monthly[key].win += Number(filtered[i].y);
-    monthly[key].tot += 1;
+// ---- Players
+function renderPlayers(){
+  const rows = filterData();
+  // counts
+  const cnt = {};
+  for(const r of rows){
+    cnt[r.Player_1] = (cnt[r.Player_1]||0)+1;
+    cnt[r.Player_2] = (cnt[r.Player_2]||0)+1;
   }
-  const months = Object.keys(monthly).sort();
-  const wr = months.map(m => monthly[m].win / monthly[m].tot);
+  const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(charts.topMatches) charts.topMatches.destroy();
+  charts.topMatches = new Chart(document.getElementById('topMatches').getContext('2d'), {
+    type: 'bar', data: { labels: top.map(x=>x[0]), datasets:[{ label:'Matches', data: top.map(x=>x[1]) }]},
+    options: { responsive:true, maintainAspectRatio:false, indexAxis:'y' }
+  });
 
-  // Player explorer rolling win rate
-  const q = document.getElementById('player').value.trim().toLowerCase();
-  const plRows = q ? DATA.filter(r => String(r.Player_1).toLowerCase().includes(q) || String(r.Player_2).toLowerCase().includes(q)) : [];
-  const sortedPl = plRows.sort((a,b)=> new Date(a.Date) - new Date(b.Date));
-  const roll = [];
-  const window = 10;
-  let wins = 0, buf = [];
-  for (const r of sortedPl) {
-    const meIsP1 = String(r.Player_1).toLowerCase().includes(q);
-    const y1 = Number(r.y);
-    const win = meIsP1 ? y1 : (1 - y1);
-    buf.push(win); wins += win;
-    if (buf.length > window) wins -= buf.shift();
-    roll.push(buf.length >= window ? wins / buf.length : null);
+  // win rate (min 30 matches)
+  const stats = {};
+  for(const r of rows){
+    const p1 = r.Player_1, p2 = r.Player_2, y = Number(r.y);
+    if(!stats[p1]) stats[p1]={win:0, tot:0};
+    if(!stats[p2]) stats[p2]={win:0, tot:0};
+    stats[p1].win += (y===1?1:0); stats[p1].tot += 1;
+    stats[p2].win += (y===0?1:0); stats[p2].tot += 1;
   }
-
-  // Update charts
-  if (rocChart) rocChart.destroy();
-  if (calibChart) calibChart.destroy();
-  if (timeChart) timeChart.destroy();
-  if (playerChart) playerChart.destroy();
-
-  rocChart = new Chart(document.getElementById('rocChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: rocX, datasets: [{ label: 'ROC', data: rocY, fill: false }]},
-    options: { responsive:true, maintainAspectRatio:false, scales: { x: { title:{display:true, text:'FPR'} }, y: { title:{display:true, text:'TPR'}, min:0, max:1 } } }
+  const wr = Object.entries(stats).filter(([k,v])=>v.tot>=30).map(([k,v])=>[k, v.win/v.tot, v.tot]);
+  const topWr = wr.sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(charts.topWins) charts.topWins.destroy();
+  charts.topWins = new Chart(document.getElementById('topWins').getContext('2d'), {
+    type: 'bar', data: { labels: topWr.map(x=>x[0]), datasets:[{ label:'Win rate', data: topWr.map(x=>x[1]) }]},
+    options: { responsive:true, maintainAspectRatio:false, indexAxis:'y', scales:{ y:{ min:0, max:1 } } }
   });
 
-  calibChart = new Chart(document.getElementById('calibChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: calibX, datasets: [{ label: 'Observed', data: calibY, fill:false }, { label: 'Ideal', data: calibX, fill:false }]},
-    options: { responsive:true, maintainAspectRatio:false, scales: { x: { title:{display:true, text:'Predicted probability'} }, y: { title:{display:true, text:'Observed frequency'}, min:0, max:1 } } }
-  });
-
-  timeChart = new Chart(document.getElementById('timeChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: months, datasets: [{ label: 'Win rate (Player_1)', data: wr, fill: false }]},
-    options: { responsive:true, maintainAspectRatio:false, scales: { y: { min:0, max:1 } } }
-  });
-
-  playerChart = new Chart(document.getElementById('playerChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: sortedPl.map(r=>r.Date), datasets: [{ label: 'Rolling win% (10)', data: roll, fill:false }]},
-    options: { responsive:true, maintainAspectRatio:false, scales: { y: { min:0, max:1 } } }
-  });
-
-  // H2H table (recent 20 matches under filters)
-  const tbody = document.querySelector('#h2h tbody');
+  // sample table
+  const tbody = document.querySelector('#sample tbody');
   tbody.innerHTML = '';
-  const recent = filtered.slice().sort((a,b)=> new Date(b.Date) - new Date(a.Date)).slice(0, 20);
-  for (const r of recent) {
+  const recent = rows.slice().sort((a,b)=> new Date(b.Date)-new Date(a.Date)).slice(0,20);
+  for(const r of recent){
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${r.Date}</td><td>${r.Tournament||''}</td><td>${r.Surface||''}</td>
-                    <td>${r.Player_1}</td><td>${r.Player_2}</td><td>${r.Winner||''}</td>
-                    <td>${r.Odd_1||''}</td><td>${r.Odd_2||''}</td>`;
+                    <td>${r.Player_1}</td><td>${r.Player_2}</td><td>${r.Winner||''}</td>`;
     tbody.appendChild(tr);
   }
 }
 
-function initUI() {
-  // Year options
-  const years = unique(DATA.map(r => { const d = parseDate(r.Date); return d ? d.getFullYear() : null; }).filter(Boolean)).sort((a,b)=>a-b);
+// ---- Surfaces
+function renderSurfaces(){
+  const rows = filterData();
+  const perSurf = {};
+  for(const r of rows){
+    const s = String(r.Surface||'Unknown');
+    if(!perSurf[s]) perSurf[s]={win:0, tot:0};
+    perSurf[s].win += Number(r.y)===1?1:0;
+    perSurf[s].tot += 1;
+  }
+  const labels = Object.keys(perSurf);
+  const wr = labels.map(s=> perSurf[s].win/perSurf[s].tot);
+  const cnt = labels.map(s=> perSurf[s].tot);
+
+  if(charts.surfWins) charts.surfWins.destroy();
+  charts.surfWins = new Chart(document.getElementById('surfWins').getContext('2d'), {
+    type: 'bar', data: { labels, datasets:[{ label:'Win rate (Player_1)', data: wr }]},
+    options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ min:0, max:1 } } }
+  });
+
+  if(charts.surfShare) charts.surfShare.destroy();
+  charts.surfShare = new Chart(document.getElementById('surfShare').getContext('2d'), {
+    type: 'pie', data: { labels, datasets:[{ label:'Matches', data: cnt }]},
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+}
+
+// ---- UI init
+function initUI(){
+  // tabs
+  document.querySelectorAll('button[data-tab]').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchTab(btn.dataset.tab));
+  });
+
+  // year options
+  const years = unique(DATA.map(r=>{ const d=parseDate(r.Date); return d? d.getFullYear(): null; }).filter(Boolean)).sort((a,b)=>a-b);
   const yearSel = document.getElementById('year');
-  yearSel.innerHTML = `<option value="All">All</option>` + years.map(y => `<option value="${y}">${y}</option>`).join('');
+  yearSel.innerHTML = `<option value="All">All</option>` + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  yearSel.addEventListener('change', ()=>{ renderOverview(); renderDistribution(); renderCorrelations(); renderPlayers(); renderSurfaces(); });
 
-  // Surface options
-  const surfaces = ['All'].concat(unique(DATA.map(r => String(r.Surface))).filter(Boolean));
+  // surface options
+  const surfaces = unique(DATA.map(r=> String(r.Surface))).filter(Boolean);
   const surfSel = document.getElementById('surface');
-  surfSel.innerHTML = surfaces.map(s=>`<option value="${s}">${s}</option>`).join('');
+  surfSel.innerHTML = `<option value="All">All</option>` + surfaces.map(s=>`<option value="${s}">${s}</option>`).join('');
+  surfSel.addEventListener('change', ()=>{ renderOverview(); renderDistribution(); renderCorrelations(); renderPlayers(); renderSurfaces(); });
 
-  // Coverage pill
-  const dates = DATA.map(r => parseDate(r.Date)).filter(Boolean).sort((a,b)=>a-b);
-  if (dates.length) {
-    const min = dates[0].toISOString().slice(0,10);
-    const max = dates[dates.length-1].toISOString().slice(0,10);
-    document.getElementById('coverage').textContent = `Coverage: ${min} → ${max} | ${DATA.length.toLocaleString()} rows`;
+  // coverage pill
+  const dates = DATA.map(r=>parseDate(r.Date)).filter(Boolean).sort((a,b)=>a-b);
+  if(dates.length){
+    document.getElementById('coverage').textContent = `Coverage: ${dates[0].toISOString().slice(0,10)} → ${dates[dates.length-1].toISOString().slice(0,10)} | ${DATA.length.toLocaleString()} rows`;
   } else {
     document.getElementById('coverage').textContent = `Rows: ${DATA.length.toLocaleString()}`;
   }
 
-  document.getElementById('year').addEventListener('change', refresh);
-  document.getElementById('surface').addEventListener('change', refresh);
-  document.getElementById('player').addEventListener('input', () => { refresh(); });
+  // feature list
+  populateFeatureList();
+
+  // default tab
+  switchTab('overview');
 }
 
-// Load CSV
+// ---- Load CSV and start
 Papa.parse('./wta_data.csv', {
   header: true,
   dynamicTyping: true,
   download: true,
-  complete: function(res) {
-    DATA = res.data.filter(r => r && r.Date && r.Player_1 && r.Player_2);
+  complete: function(res){
+    DATA = res.data.filter(r=> r && r.Date && r.Player_1 && r.Player_2);
     initUI();
-    refresh();
   },
-  error: function(err) {
-    console.error('Failed to load CSV', err);
+  error: function(err){
+    console.error('CSV load failed', err);
     document.getElementById('coverage').textContent = 'Failed to load CSV';
   }
 });
