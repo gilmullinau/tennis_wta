@@ -1,18 +1,18 @@
-// charts.js — final version with error handling for missing/invalid data
+// charts.js — version for your WTA CSV with underscores and semicolons
 document.addEventListener('DOMContentLoaded', () => {
   Papa.parse("wta_data.csv", {
     download: true,
     header: true,
-    delimiter: ",",
     dynamicTyping: true,
+    delimiter: ";", // your file uses semicolons
     complete: function (results) {
       try {
-        const data = results.data.filter(d => d.date && d.player1);
+        const data = results.data.filter(d => d.Date && d.Player_1);
         if (!data || data.length < 10) {
           showError(
             "⚠️ Dataset could not be loaded or contains too few rows.<br>" +
-            "Please check that <strong>wta_data.csv</strong> is in the same folder and has correct column names:<br>" +
-            "<em>tournament, date, court, surface, round, player1, player2, rank1, rank2, pts1, pts2, odd1, odd2, y, rank_diff, pts_diff, odd_diff</em>"
+            "Check that <strong>wta_data.csv</strong> is in the same folder and columns match:<br>" +
+            "<em>Tournament, Date, Court, Surface, Round, Player_1, Player_2, Rank_1, Rank_2, Pts_1, Pts_2, Odd_1, Odd_2, y...</em>"
           );
           return;
         }
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         buildEDA(data);
       } catch (err) {
         console.error(err);
-        showError("❌ An unexpected error occurred while parsing the dataset. Check console for details.");
+        showError("❌ Unexpected error while parsing dataset. Check console for details.");
       }
     },
     error: function (err) {
@@ -49,8 +49,8 @@ function showError(msg) {
 function buildEDA(data) {
   // === Dataset summary ===
   const totalMatches = data.length;
-  const years = [...new Set(data.map(d => new Date(d.date).getFullYear()))].filter(y => !isNaN(y));
-  const players = new Set(data.flatMap(d => [d.player1, d.player2]));
+  const years = [...new Set(data.map(d => d.year || new Date(d.Date).getFullYear()))].filter(y => !isNaN(y));
+  const players = new Set(data.flatMap(d => [d.Player_1, d.Player_2]));
   const favWins = data.filter(d => d.y === 1).length;
 
   document.getElementById("datasetInfo").innerHTML = `
@@ -63,7 +63,7 @@ function buildEDA(data) {
   // === Overview chart ===
   const yearly = {};
   data.forEach(d => {
-    const y = new Date(d.date).getFullYear();
+    const y = d.year || new Date(d.Date).getFullYear();
     if (!yearly[y]) yearly[y] = { total: 0, wins: 0 };
     yearly[y].total++;
     if (d.y === 1) yearly[y].wins++;
@@ -141,7 +141,7 @@ function buildEDA(data) {
   // === Player stats ===
   const stats = {};
   data.forEach(d => {
-    ["player1", "player2"].forEach((key, i) => {
+    ["Player_1", "Player_2"].forEach((key, i) => {
       const name = d[key];
       if (!name) return;
       if (!stats[name]) stats[name] = { matches: 0, wins: 0 };
@@ -170,7 +170,7 @@ function buildEDA(data) {
   // === Surface stats ===
   const surfaces = {};
   data.forEach(d => {
-    const s = d.surface || "Unknown";
+    const s = d.Surface || "Unknown";
     if (!surfaces[s]) surfaces[s] = { total: 0, wins: 0 };
     surfaces[s].total++;
     if (d.y === 1) surfaces[s].wins++;

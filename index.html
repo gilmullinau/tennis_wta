@@ -52,21 +52,32 @@
           <tr><th>Column</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td><strong>Tournament</strong></td><td>Name of the tournament</td></tr>
-          <tr><td><strong>Date</strong></td><td>Date when the match was played</td></tr>
-          <tr><td><strong>Court</strong></td><td>Indoor or outdoor court type</td></tr>
-          <tr><td><strong>Surface</strong></td><td>Type of surface: hard, clay or grass</td></tr>
-          <tr><td><strong>Round</strong></td><td>Stage of the tournament (e.g., First Round, Quarterfinal)</td></tr>
-          <tr><td><strong>Player&nbsp;1 / Player&nbsp;2</strong></td><td>Names of the two competitors — Player&nbsp;1 is the favourite</td></tr>
-          <tr><td><strong>Rank&nbsp;1 / Rank&nbsp;2</strong></td><td>Official WTA rankings (lower values indicate stronger players)</td></tr>
-          <tr><td><strong>Pts&nbsp;1 / Pts&nbsp;2</strong></td><td>WTA ranking points of each player</td></tr>
-          <tr><td><strong>Odd&nbsp;1 / Odd&nbsp;2</strong></td><td>Bookmaker odds — smaller odds indicate higher probability of winning</td></tr>
-          <tr><td><strong>y</strong></td><td>Target variable (1 = favourite won, 0 = favourite lost)</td></tr>
-          <tr><td><strong>rank_diff</strong></td><td>Difference in rankings: Rank_2 − Rank_1</td></tr>
-          <tr><td><strong>pts_diff</strong></td><td>Difference in ranking points: Pts_1 − Pts_2</td></tr>
-          <tr><td><strong>odd_diff</strong></td><td>Difference in odds: Odd_2 − Odd_1</td></tr>
-        </tbody>
-      </table>
+  <tr><td><strong>Tournament</strong></td><td>Name of the tournament <span class="badge optional">optional</span></td></tr>
+  <tr><td><strong>Date</strong></td><td>Match date (used to derive <code>year</code>)</td></tr>
+  <tr><td><strong>Court</strong></td><td>Indoor / Outdoor</td></tr>
+  <tr><td><strong>Surface</strong></td><td>Surface type: hard, clay, grass</td></tr>
+  <tr><td><strong>Round</strong></td><td>Tournament stage (e.g., R32, QF, SF, F)</td></tr>
+
+  <tr><td><strong>Best of</strong></td><td>Sets per match (WTA is almost always Bo3) <span class="badge optional">optional</span></td></tr>
+
+  <tr><td><strong>Player_1 / Player_2</strong></td><td>Competitor names — Player_1 is the favourite <span class="badge optional">optional (ID)</span></td></tr>
+  <tr><td><strong>Winner</strong></td><td>Winner name (duplicates target) <span class="badge leakage">leakage</span></td></tr>
+
+  <tr><td><strong>Rank_1 / Rank_2</strong></td><td>Official WTA rankings (lower is better)</td></tr>
+  <tr><td><strong>Pts_1 / Pts_2</strong></td><td>WTA ranking points</td></tr>
+  <tr><td><strong>Odd_1 / Odd_2</strong></td><td>Bookmaker odds (smaller ⇒ higher win probability)</td></tr>
+
+  <tr><td><strong>Score</strong></td><td>Final score (reveals outcome) <span class="badge leakage">leakage</span> <span class="badge optional">optional</span></td></tr>
+
+  <tr><td><strong>y</strong></td><td>Target: 1 = favourite (Player_1) won, 0 = lost</td></tr>
+  <tr><td><strong>year</strong></td><td>Calendar year (derived from Date) <span class="badge derived">derived</span> <span class="badge optional">optional</span></td></tr>
+
+  <tr><td><strong>rank_diff</strong></td><td>Rank_2 − Rank_1 <span class="badge derived">derived</span></td></tr>
+  <tr><td><strong>pts_diff</strong></td><td>Pts_1 − Pts_2 <span class="badge derived">derived</span></td></tr>
+  <tr><td><strong>odd_diff</strong></td><td>Odd_2 − Odd_1 <span class="badge derived">derived</span></td></tr>
+</tbody>
+
+</table>
 
       <div class="card">
         <canvas id="overviewChart"></canvas>
