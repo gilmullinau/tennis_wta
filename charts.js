@@ -75,12 +75,19 @@ let CHARTS = { missing: null, dist: null, topPlayers: null, winRatePlayers: null
 init();
 
 function init() {
-  const csvPath = "wta_data.csv"; // same folder as index.html
-  Papa.parse(csvPath, {
-    download: true,
-    header: true,
-    dynamicTyping: false,
-    skipEmptyLines: "greedy",
+  Papa.parse("wta_data.csv", {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      delimiter: delim,
+      // normalize headers to lower_snake_case and strip BOM
+      transformHeader: h => h
+        .replace(/^﻿/, "")            // BOM
+        .trim()
+        .replace(/\./g, "")
+        .replace(/\s+/g, "_")
+        .toLowerCase(),
     complete: onCsvLoaded,
     error: (err) => {
       showDatasetInfo(`⚠️ Failed to load CSV (${err?.message || "unknown error"}). Make sure to run via a local server (e.g., "python -m http.server").`);
