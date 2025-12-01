@@ -97,6 +97,7 @@ function onCsvLoaded(rows) {
   renderDistributions(RAW, NUMERIC_COLS[0]);
   renderCorrelations(RAW, NUMERIC_COLS);
   initPlayerAnalytics(RAW);
+  setupDatasetDownload();
 }
 
 /* ============================
@@ -351,6 +352,28 @@ function populatePlayerInput(names) {
       syncAndRender(value);
     };
   });
+}
+
+function setupDatasetDownload() {
+  const btn = document.getElementById("downloadDataset");
+  if (!btn) return;
+
+  btn.onclick = () => {
+    if (!RAW.length) {
+      console.warn("No data loaded to export.");
+      return;
+    }
+    const csv = Papa.unparse(RAW);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "feature_engineered.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 }
 
 function renderWinRateTimeline(rows, presetName) {

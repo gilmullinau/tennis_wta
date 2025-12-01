@@ -138,6 +138,30 @@ canvas {
   background-color: #10161b;
 }
 
+.download-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 1.25rem;
+}
+
+.accent-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.1rem;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  box-shadow: 0 6px 18px rgba(88, 166, 255, 0.3);
+  transition: transform 0.08s ease, box-shadow 0.2s ease;
+}
+
+.accent-btn:hover { box-shadow: 0 8px 22px rgba(88, 166, 255, 0.35); }
+.accent-btn:active { transform: translateY(1px); }
+
 /* Feature buttons */
 .feature-buttons {
   display: flex;

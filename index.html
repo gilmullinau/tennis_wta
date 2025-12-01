@@ -131,6 +131,11 @@
         Variables marked as <span class="badge leakage">leakage</span> or <span class="badge optional">optional</span> are excluded from the predictive model.
       </p>
 
+      <div class="download-row">
+        <button id="downloadDataset" class="accent-btn">Download Model Dataset</button>
+        <span class="muted">Exports the current feature-engineered dataset used across the dashboard.</span>
+      </div>
+
       <table class="info-table">
         <thead>
           <tr>
@@ -151,6 +156,8 @@
           <tr><td><b>Surface</b></td><td>Categorical</td><td>Surface type (hard/clay/grass)</td><td>✅ Encoded</td></tr>
           <tr><td><b>Court</b></td><td>Categorical</td><td>Indoor / Outdoor</td><td>✅ Encoded</td></tr>
           <tr><td><b>Round</b></td><td>Categorical</td><td>Tournament round (R32, QF, SF, F)</td><td>✅ Encoded</td></tr>
+          <tr><td><b>rolling_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches for form tracking</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>streak</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>Player_1 / Player_2</b></td><td>Text</td><td>Player names (used for H2H only)</td><td>❌ No</td></tr>
           <tr><td><b>Winner</b></td><td>Text</td><td>Match winner (reveals target)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
           <tr><td><b>Score</b></td><td>Text</td><td>Final score (reveals outcome)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
