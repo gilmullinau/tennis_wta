@@ -5,10 +5,22 @@
 =============================*/
 
 const NUMERIC_HINTS = [
-  "rank_1","rank_2","pts_1","pts_2","odd_1","odd_2",
-  "rank_diff","pts_diff","odd_diff",
-  "h2h_advantage","last_winner","surface_winrate_adv",
-  "y","year"
+  "rank_1",
+  "rank_2",
+  "pts_1",
+  "pts_2",
+  "odd_1",
+  "odd_2",
+  "rank_diff",
+  "pts_diff",
+  "odd_diff",
+  "h2h_advantage",
+  "last_winner",
+  "surface_winrate_adv",
+  "rolling_win_rate_10",
+  "streak",
+  "y",
+  "year",
 ];
 
 function toNum(x) {
@@ -81,6 +93,8 @@ function onCsvLoaded(rows) {
     odd_diff: toNum(r.odd_diff),
   }));
 
+  computePlayerFormFeatures(RAW);
+
   NUMERIC_COLS = Object.keys(RAW[0]).filter(
     (k) => NUMERIC_HINTS.includes(k) || typeof RAW[0][k] === "number"
   );
@@ -98,6 +112,59 @@ function onCsvLoaded(rows) {
   renderCorrelations(RAW, NUMERIC_COLS);
   initPlayerAnalytics(RAW);
   setupDatasetDownload();
+}
+
+function computePlayerFormFeatures(rows) {
+  const normName = (s) => (s || "").toString().trim().toLowerCase();
+
+  rows.forEach((r) => {
+    r.rolling_win_rate_10 = null;
+    r.streak = null;
+  });
+
+  const matchesByPlayer = new Map();
+
+  rows.forEach((r, idx) => {
+    const dateStr = r.match_date || r.Date || r.date;
+    const date = dateStr ? new Date(dateStr) : null;
+    if (!date || isNaN(date)) return;
+
+    const p1 = r.Player_1 || r.player_1;
+    const p2 = r.Player_2 || r.player_2;
+    const winnerNorm = normName(r.Winner || r.winner);
+
+    [p1, p2].forEach((name) => {
+      const key = normName(name);
+      if (!key) return;
+      if (!matchesByPlayer.has(key)) matchesByPlayer.set(key, []);
+      matchesByPlayer.get(key).push({
+        index: idx,
+        date,
+        isWin: winnerNorm && winnerNorm === key,
+      });
+    });
+  });
+
+  matchesByPlayer.forEach((matches, playerKey) => {
+    matches.sort((a, b) => a.date - b.date || a.index - b.index);
+    let streak = 0;
+    const wins = [];
+
+    matches.forEach((m) => {
+      const result = m.isWin ? 1 : 0;
+      streak = result ? (streak >= 0 ? streak + 1 : 1) : streak <= 0 ? streak - 1 : -1;
+      wins.push(result);
+      const window = wins.slice(Math.max(0, wins.length - 10));
+      const rate = window.reduce((a, b) => a + b, 0) / window.length;
+
+      const row = rows[m.index];
+      const player1Key = normName(row.Player_1 || row.player_1);
+      if (player1Key === playerKey) {
+        row.rolling_win_rate_10 = Math.round(rate * 100) / 100;
+        row.streak = streak;
+      }
+    });
+  });
 }
 
 /* ============================
