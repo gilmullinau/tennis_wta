@@ -311,27 +311,57 @@ function renderPlayerAnalytics(rows) {
   drawLine("trendChart", yKeys, wr);
 
   // Prefill player selector with current top player if empty
-  const playerInput = document.getElementById("playerSelect");
-  if (playerInput && !playerInput.value && top.length) {
-    playerInput.value = top[0].player;
+  const selectIds = ["playerSelect", "playerStreakSelect"];
+  const targetSelect = selectIds
+    .map((id) => document.getElementById(id))
+    .find((el) => el && !el.value);
+
+  if (targetSelect && top.length) {
+    selectIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean)
+      .forEach((el) => (el.value = top[0].player));
     renderWinRateTimeline(RAW, top[0].player);
+    renderStreakTimeline(RAW, top[0].player);
   }
 }
 
 function populatePlayerInput(names) {
-  const select = document.getElementById("playerSelect");
-  if (!select) return;
+  const selects = [
+    document.getElementById("playerSelect"),
+    document.getElementById("playerStreakSelect"),
+  ].filter(Boolean);
+  if (!selects.length) return;
+
   const options = ["<option value=\"\">Select player</option>"];
   names.forEach((n) => options.push(`<option value="${n}">${n}</option>`));
-  select.innerHTML = options.join("");
-  select.onchange = () => renderWinRateTimeline(RAW);
+  selects.forEach((sel) => (sel.innerHTML = options.join("")));
+
+  const syncAndRender = (value) => {
+    selects.forEach((s) => {
+      if (s.value !== value) s.value = value;
+    });
+    renderWinRateTimeline(RAW, value);
+    renderStreakTimeline(RAW, value);
+  };
+
+  selects.forEach((sel) => {
+    sel.onchange = (e) => {
+      const value = (e.target.value || "").trim();
+      syncAndRender(value);
+    };
+  });
 }
 
 function renderWinRateTimeline(rows, presetName) {
   const message = document.getElementById("playerTimelineMessage");
   const select = document.getElementById("playerSelect");
+  const linkedSelect = document.getElementById("playerStreakSelect");
   if (select && presetName) {
     select.value = presetName;
+  }
+  if (linkedSelect && presetName) {
+    linkedSelect.value = presetName;
   }
   const targetName = (presetName || (select && select.value) || "").trim();
 
@@ -422,6 +452,119 @@ function renderWinRateTimeline(rows, presetName) {
         tooltip: {
           callbacks: {
             label: (ctx) => `Win Rate: ${(ctx.parsed.y * 100).toFixed(1)}%`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderStreakTimeline(rows, presetName) {
+  const message = document.getElementById("streakTimelineMessage");
+  const select = document.getElementById("playerStreakSelect");
+  const linkedSelect = document.getElementById("playerSelect");
+  if (select && presetName) {
+    select.value = presetName;
+  }
+  if (linkedSelect && presetName) {
+    linkedSelect.value = presetName;
+  }
+  const targetName = (presetName || (select && select.value) || "").trim();
+
+  const clearChart = (text) => {
+    if (message) message.innerText = text || "";
+    if (CHARTS.streakTimeline) {
+      CHARTS.streakTimeline.destroy();
+      CHARTS.streakTimeline = null;
+    }
+  };
+
+  if (!targetName) {
+    clearChart("Select a player to see their streak timeline.");
+    return;
+  }
+
+  const normTarget = targetName.toLowerCase();
+  const matches = rows.filter((r) => {
+    const p1 = (r.Player_1 || r.player_1 || "").toLowerCase();
+    const p2 = (r.Player_2 || r.player_2 || "").toLowerCase();
+    return p1 === normTarget || p2 === normTarget;
+  });
+
+  if (!matches.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  const withDates = matches
+    .map((m) => ({
+      ...m,
+      _dateStr: m.match_date || m.Date || m.date,
+      _date: new Date(m.match_date || m.Date || m.date),
+    }))
+    .filter((m) => m._dateStr && !isNaN(m._date));
+
+  const orderBroken = withDates.some((m, i) => {
+    if (i === 0) return false;
+    return withDates[i - 1]._date > m._date;
+  });
+  if (orderBroken) {
+    console.error(`Match dates for ${targetName} are not sorted; re-sorting.`);
+  }
+
+  const sorted = withDates.sort((a, b) => a._date - b._date);
+  let streak = 0;
+  const timeline = sorted.map((m) => {
+    const winner = (m.Winner || m.winner || "").toLowerCase();
+    const isWin = winner === normTarget;
+    if (isWin) {
+      streak = streak >= 0 ? streak + 1 : 1;
+    } else {
+      streak = streak <= 0 ? streak - 1 : -1;
+    }
+    return {
+      date: m._dateStr,
+      streak,
+    };
+  });
+
+  if (!timeline.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  if (message) message.innerText = `${targetName} — winning/losing streak over time (positive = wins, negative = losses).`;
+  const ctx = document.getElementById("streakTimeline").getContext("2d");
+  if (CHARTS.streakTimeline) CHARTS.streakTimeline.destroy();
+  CHARTS.streakTimeline = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: timeline.map((t) => t.date),
+      datasets: [
+        {
+          label: "Streak",
+          data: timeline.map((t) => t.streak),
+          borderColor: "#f97316",
+          backgroundColor: "rgba(249,115,22,0.15)",
+          borderWidth: 2,
+          pointRadius: 3,
+          tension: 0.25,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          suggestedMin: -5,
+          suggestedMax: 5,
+          ticks: { callback: (v) => v },
+        },
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Streak: ${ctx.parsed.y}`,
           },
         },
       },
