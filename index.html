@@ -134,6 +134,21 @@
         <div id="fatigueTimelineMessage" class="muted"></div>
         <canvas id="fatigueTimeline"></canvas>
       </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>🌍 Surface Trend Analysis</h3>
+            <p class="muted">Rolling 5-match win rates on hard, clay, and grass to reveal surface-specific form.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerSurfaceSelect">Player:</label>
+            <select id="playerSurfaceSelect"></select>
+          </div>
+        </div>
+        <div id="surfaceTrendMessage" class="muted"></div>
+        <canvas id="surfaceTrendTimeline"></canvas>
+      </div>
     </section>
 
     <hr class="divider"/>
@@ -176,6 +191,10 @@
           <tr><td><b>fatigue_7d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 7 days (player load)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>fatigue_14d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 14 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>fatigue_30d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 30 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>surface_win_rate_hard_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on hard courts</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>surface_win_rate_clay_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on clay courts</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>surface_win_rate_grass_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on grass courts</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>surface_trend</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Surface-specific rolling win rate aligned with the current match surface</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>Player_1 / Player_2</b></td><td>Text</td><td>Player names (used for H2H only)</td><td>❌ No</td></tr>
           <tr><td><b>Winner</b></td><td>Text</td><td>Match winner (reveals target)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
           <tr><td><b>Score</b></td><td>Text</td><td>Final score (reveals outcome)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>

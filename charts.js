@@ -22,6 +22,10 @@ const NUMERIC_HINTS = [
   "fatigue_7d",
   "fatigue_14d",
   "fatigue_30d",
+  "surface_trend",
+  "surface_win_rate_hard_5",
+  "surface_win_rate_clay_5",
+  "surface_win_rate_grass_5",
   "y",
   "year",
 ];
@@ -98,6 +102,7 @@ function onCsvLoaded(rows) {
 
   computePlayerFormFeatures(RAW);
   computePlayerFatigueFeatures(RAW);
+  computePlayerSurfaceTrendFeatures(RAW);
 
   NUMERIC_COLS = Object.keys(RAW[0]).filter(
     (k) => NUMERIC_HINTS.includes(k) || typeof RAW[0][k] === "number"
@@ -221,6 +226,68 @@ function computePlayerFatigueFeatures(rows) {
         row.fatigue_7d = fatigue7;
         row.fatigue_14d = fatigue14;
         row.fatigue_30d = fatigue30;
+      }
+    });
+  });
+}
+
+function computePlayerSurfaceTrendFeatures(rows) {
+  const normName = (s) => (s || "").toString().trim().toLowerCase();
+  const surfaces = ["hard", "clay", "grass"];
+
+  rows.forEach((r) => {
+    surfaces.forEach((s) => {
+      r[`surface_win_rate_${s}_5`] = null;
+    });
+    r.surface_trend = null;
+  });
+
+  const matchesByPlayerSurface = new Map();
+
+  rows.forEach((r, idx) => {
+    const surf = (r.Surface || r.surface || "").toString().toLowerCase();
+    if (!surfaces.includes(surf)) return;
+
+    const dateStr = r.match_date || r.Date || r.date;
+    const date = dateStr ? new Date(dateStr) : null;
+    if (!date || isNaN(date)) return;
+
+    const p1 = r.Player_1 || r.player_1;
+    const p2 = r.Player_2 || r.player_2;
+    const winnerNorm = normName(r.Winner || r.winner);
+
+    [p1, p2].forEach((name) => {
+      const key = normName(name);
+      if (!key) return;
+      const mapKey = `${key}|${surf}`;
+      if (!matchesByPlayerSurface.has(mapKey)) matchesByPlayerSurface.set(mapKey, []);
+      matchesByPlayerSurface.get(mapKey).push({
+        index: idx,
+        surface: surf,
+        ts: date.getTime(),
+        date,
+        isWin: winnerNorm && winnerNorm === key,
+      });
+    });
+  });
+
+  matchesByPlayerSurface.forEach((matches, mapKey) => {
+    matches.sort((a, b) => a.ts - b.ts || a.index - b.index);
+    const wins = [];
+
+    const [playerKey, surface] = mapKey.split("|");
+
+    matches.forEach((m) => {
+      wins.push(m.isWin ? 1 : 0);
+      const window = wins.slice(Math.max(0, wins.length - 5));
+      const rate = window.reduce((a, b) => a + b, 0) / window.length;
+
+      const row = rows[m.index];
+      const player1Key = normName(row.Player_1 || row.player_1);
+      const surf = (row.Surface || row.surface || "").toLowerCase();
+      if (player1Key === playerKey && surf === surface) {
+        row[`surface_win_rate_${surface}_5`] = Math.round(rate * 100) / 100;
+        row.surface_trend = Math.round(rate * 100) / 100;
       }
     });
   });
@@ -438,7 +505,12 @@ function renderPlayerAnalytics(rows) {
   drawLine("trendChart", yKeys, wr);
 
   // Prefill player selector with current top player if empty
-  const selectIds = ["playerSelect", "playerStreakSelect", "playerFatigueSelect"];
+  const selectIds = [
+    "playerSelect",
+    "playerStreakSelect",
+    "playerFatigueSelect",
+    "playerSurfaceSelect",
+  ];
   const targetSelect = selectIds
     .map((id) => document.getElementById(id))
     .find((el) => el && !el.value);
@@ -451,6 +523,7 @@ function renderPlayerAnalytics(rows) {
     renderWinRateTimeline(RAW, top[0].player);
     renderStreakTimeline(RAW, top[0].player);
     renderFatigueTimeline(RAW, top[0].player);
+    renderSurfaceTrendTimeline(RAW, top[0].player);
   }
 }
 
@@ -459,6 +532,7 @@ function populatePlayerInput(names) {
     document.getElementById("playerSelect"),
     document.getElementById("playerStreakSelect"),
     document.getElementById("playerFatigueSelect"),
+    document.getElementById("playerSurfaceSelect"),
   ].filter(Boolean);
   if (!selects.length) return;
 
@@ -473,6 +547,7 @@ function populatePlayerInput(names) {
     renderWinRateTimeline(RAW, value);
     renderStreakTimeline(RAW, value);
     renderFatigueTimeline(RAW, value);
+    renderSurfaceTrendTimeline(RAW, value);
   };
 
   selects.forEach((sel) => {
@@ -508,13 +583,19 @@ function setupDatasetDownload() {
 function renderWinRateTimeline(rows, presetName) {
   const message = document.getElementById("playerTimelineMessage");
   const select = document.getElementById("playerSelect");
-  const linkedSelect = document.getElementById("playerStreakSelect");
+  const linkedSelects = [
+    document.getElementById("playerStreakSelect"),
+    document.getElementById("playerFatigueSelect"),
+    document.getElementById("playerSurfaceSelect"),
+  ];
   if (select && presetName) {
     select.value = presetName;
   }
-  if (linkedSelect && presetName) {
-    linkedSelect.value = presetName;
-  }
+  linkedSelects
+    .filter(Boolean)
+    .forEach((el) => {
+      if (presetName) el.value = presetName;
+    });
   const targetName = (presetName || (select && select.value) || "").trim();
 
   const clearChart = (text) => {
@@ -616,13 +697,19 @@ function renderWinRateTimeline(rows, presetName) {
 function renderStreakTimeline(rows, presetName) {
   const message = document.getElementById("streakTimelineMessage");
   const select = document.getElementById("playerStreakSelect");
-  const linkedSelect = document.getElementById("playerSelect");
+  const linkedSelects = [
+    document.getElementById("playerSelect"),
+    document.getElementById("playerFatigueSelect"),
+    document.getElementById("playerSurfaceSelect"),
+  ];
   if (select && presetName) {
     select.value = presetName;
   }
-  if (linkedSelect && presetName) {
-    linkedSelect.value = presetName;
-  }
+  linkedSelects
+    .filter(Boolean)
+    .forEach((el) => {
+      if (presetName) el.value = presetName;
+    });
   const targetName = (presetName || (select && select.value) || "").trim();
 
   const clearChart = (text) => {
@@ -734,6 +821,7 @@ function renderFatigueTimeline(rows, presetName) {
   const linkedSelects = [
     document.getElementById("playerSelect"),
     document.getElementById("playerStreakSelect"),
+    document.getElementById("playerSurfaceSelect"),
   ];
 
   if (select && presetName) {
@@ -858,6 +946,170 @@ function renderFatigueTimeline(rows, presetName) {
         tooltip: {
           callbacks: {
             label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderSurfaceTrendTimeline(rows, presetName) {
+  const message = document.getElementById("surfaceTrendMessage");
+  const select = document.getElementById("playerSurfaceSelect");
+  const linkedSelects = [
+    document.getElementById("playerSelect"),
+    document.getElementById("playerStreakSelect"),
+    document.getElementById("playerFatigueSelect"),
+  ];
+
+  if (select && presetName) {
+    select.value = presetName;
+  }
+  linkedSelects
+    .filter(Boolean)
+    .forEach((el) => {
+      if (presetName) el.value = presetName;
+    });
+
+  const targetName = (presetName || (select && select.value) || "").trim();
+
+  const clearChart = (text) => {
+    if (message) message.innerText = text || "";
+    if (CHARTS.surfaceTrend) {
+      CHARTS.surfaceTrend.destroy();
+      CHARTS.surfaceTrend = null;
+    }
+  };
+
+  if (!targetName) {
+    clearChart("Select a player to see surface win-rate trends.");
+    return;
+  }
+
+  const normTarget = targetName.toLowerCase();
+  const matches = rows.filter((r) => {
+    const p1 = (r.Player_1 || r.player_1 || "").toLowerCase();
+    const p2 = (r.Player_2 || r.player_2 || "").toLowerCase();
+    return p1 === normTarget || p2 === normTarget;
+  });
+
+  if (!matches.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  const withDates = matches
+    .map((m, idx) => ({
+      ...m,
+      _dateStr: m.match_date || m.Date || m.date,
+      _date: new Date(m.match_date || m.Date || m.date),
+      _ts: new Date(m.match_date || m.Date || m.date).getTime(),
+      _idx: idx,
+    }))
+    .filter((m) => m._dateStr && !isNaN(m._date));
+
+  const orderBroken = withDates.some((m, i) => {
+    if (i === 0) return false;
+    return withDates[i - 1]._date > m._date;
+  });
+  if (orderBroken) {
+    console.error(`Match dates for ${targetName} are not sorted; re-sorting.`);
+  }
+
+  const sorted = withDates.sort((a, b) => a._ts - b._ts || a._idx - b._idx);
+  const wins = {
+    hard: [],
+    clay: [],
+    grass: [],
+  };
+
+  const timeline = sorted.map((m) => {
+    const surface = (m.Surface || m.surface || "").toLowerCase();
+    const winner = (m.Winner || m.winner || "").toLowerCase();
+    const isWin = winner === normTarget;
+
+    let hard = null,
+      clay = null,
+      grass = null;
+
+    const computeRate = (arr) => {
+      const window = arr.slice(Math.max(0, arr.length - 5));
+      return Math.round((window.reduce((a, b) => a + b, 0) / window.length) * 100) / 100;
+    };
+
+    if (surface === "hard") {
+      wins.hard.push(isWin ? 1 : 0);
+      hard = computeRate(wins.hard);
+    } else if (surface === "clay") {
+      wins.clay.push(isWin ? 1 : 0);
+      clay = computeRate(wins.clay);
+    } else if (surface === "grass") {
+      wins.grass.push(isWin ? 1 : 0);
+      grass = computeRate(wins.grass);
+    }
+
+    return {
+      date: m._dateStr,
+      hard,
+      clay,
+      grass,
+    };
+  });
+
+  const hasSeries = timeline.some((t) => [t.hard, t.clay, t.grass].some((v) => v !== null && !isNaN(v)));
+  if (!hasSeries) {
+    clearChart("Player has no match history on tracked surfaces.");
+    return;
+  }
+
+  if (message)
+    message.innerText = `${targetName} — rolling 5-match win rate by surface (hard/clay/grass).`;
+
+  const ctx = document.getElementById("surfaceTrendTimeline").getContext("2d");
+  if (CHARTS.surfaceTrend) CHARTS.surfaceTrend.destroy();
+  CHARTS.surfaceTrend = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: timeline.map((t) => t.date),
+      datasets: [
+        {
+          label: "Hard (5-match WR)",
+          data: timeline.map((t) => t.hard),
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.15)",
+          borderWidth: 2,
+          tension: 0.25,
+          spanGaps: true,
+        },
+        {
+          label: "Clay (5-match WR)",
+          data: timeline.map((t) => t.clay),
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239,68,68,0.12)",
+          borderWidth: 2,
+          tension: 0.25,
+          spanGaps: true,
+        },
+        {
+          label: "Grass (5-match WR)",
+          data: timeline.map((t) => t.grass),
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.12)",
+          borderWidth: 2,
+          tension: 0.25,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true, max: 1, ticks: { callback: (v) => v.toFixed(2) } },
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${(ctx.parsed.y * 100).toFixed(1)}%`,
           },
         },
       },
