@@ -186,8 +186,10 @@
           <tr><td><b>Surface</b></td><td>Categorical</td><td>Surface type (hard/clay/grass)</td><td>✅ Encoded</td></tr>
           <tr><td><b>Court</b></td><td>Categorical</td><td>Indoor / Outdoor</td><td>✅ Encoded</td></tr>
           <tr><td><b>Round</b></td><td>Categorical</td><td>Tournament round (R32, QF, SF, F)</td><td>✅ Encoded</td></tr>
-          <tr><td><b>rolling_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches for form tracking</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>streak</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>recent_win_rate_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Short-horizon rolling win rate over the last 5 matches</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>recent_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches (aligned with correlation analysis)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>rolling_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Legacy alias for 10-match rolling form used elsewhere in the dashboard</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>streak_value</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−) shared with the streak timeline</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>fatigue_7d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 7 days (player load)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>fatigue_14d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 14 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>fatigue_30d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 30 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>

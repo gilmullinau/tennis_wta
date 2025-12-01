@@ -14,11 +14,14 @@ const NUMERIC_HINTS = [
   "rank_diff",
   "pts_diff",
   "odd_diff",
+  "recent_win_rate_5",
+  "recent_win_rate_10",
   "h2h_advantage",
   "last_winner",
   "surface_winrate_adv",
   "rolling_win_rate_10",
   "streak",
+  "streak_value",
   "fatigue_7d",
   "fatigue_14d",
   "fatigue_30d",
@@ -28,6 +31,16 @@ const NUMERIC_HINTS = [
   "surface_win_rate_grass_5",
   "y",
   "year",
+];
+
+const CORR_REQUIRED_FEATURES = [
+  "recent_win_rate_5",
+  "recent_win_rate_10",
+  "streak_value",
+  "fatigue_7d",
+  "fatigue_14d",
+  "fatigue_30d",
+  "surface_trend",
 ];
 
 function toNum(x) {
@@ -114,11 +127,13 @@ function onCsvLoaded(rows) {
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
 
+  const corrCols = collectCorrelationColumns(RAW, NUMERIC_COLS);
+
   renderDatasetOverview(RAW);
   renderMissingness(RAW);
   buildFeatureButtons(NUMERIC_COLS);
   renderDistributions(RAW, NUMERIC_COLS[0]);
-  renderCorrelations(RAW, NUMERIC_COLS);
+  renderCorrelations(RAW, corrCols);
   initPlayerAnalytics(RAW);
   setupDatasetDownload();
 }
@@ -127,8 +142,11 @@ function computePlayerFormFeatures(rows) {
   const normName = (s) => (s || "").toString().trim().toLowerCase();
 
   rows.forEach((r) => {
+    r.recent_win_rate_5 = null;
+    r.recent_win_rate_10 = null;
     r.rolling_win_rate_10 = null;
     r.streak = null;
+    r.streak_value = null;
   });
 
   const matchesByPlayer = new Map();
@@ -163,14 +181,19 @@ function computePlayerFormFeatures(rows) {
       const result = m.isWin ? 1 : 0;
       streak = result ? (streak >= 0 ? streak + 1 : 1) : streak <= 0 ? streak - 1 : -1;
       wins.push(result);
-      const window = wins.slice(Math.max(0, wins.length - 10));
-      const rate = window.reduce((a, b) => a + b, 0) / window.length;
+      const window5 = wins.slice(Math.max(0, wins.length - 5));
+      const window10 = wins.slice(Math.max(0, wins.length - 10));
+      const rate5 = window5.reduce((a, b) => a + b, 0) / window5.length;
+      const rate10 = window10.reduce((a, b) => a + b, 0) / window10.length;
 
       const row = rows[m.index];
       const player1Key = normName(row.Player_1 || row.player_1);
       if (player1Key === playerKey) {
-        row.rolling_win_rate_10 = Math.round(rate * 100) / 100;
+        row.recent_win_rate_5 = Math.round(rate5 * 100) / 100;
+        row.recent_win_rate_10 = Math.round(rate10 * 100) / 100;
+        row.rolling_win_rate_10 = Math.round(rate10 * 100) / 100;
         row.streak = streak;
+        row.streak_value = streak;
       }
     });
   });
@@ -382,6 +405,13 @@ function renderDistributions(rows, col) {
 /* ============================
    Correlations
 =============================*/
+
+function collectCorrelationColumns(rows, numericCols) {
+  const colSet = new Set(numericCols);
+  CORR_REQUIRED_FEATURES.forEach((f) => colSet.add(f));
+
+  return [...colSet].filter((c) => rows.some((r) => Number.isFinite(toNum(r[c]))));
+}
 
 function renderCorrelations(rows, cols) {
   const corr = (a, b) => {
