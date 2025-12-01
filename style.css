@@ -87,6 +87,7 @@ main {
 h2 { margin-bottom: 0.5rem; }
 
 p { color: var(--text-muted); }
+.muted { color: var(--text-muted); margin: 0.15rem 0; }
 
 /* Cards */
 .card {
@@ -162,6 +163,35 @@ canvas {
 .feature-btn.active {
   background-color: var(--accent);
   color: white;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.player-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1f2a35;
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+}
+
+.player-input label { color: var(--text-muted); font-size: 0.9rem; }
+
+.player-input input {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  outline: none;
+  min-width: 220px;
+  font-size: 0.95rem;
 }
 
 /* Correlation table */

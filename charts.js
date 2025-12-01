@@ -30,6 +30,7 @@ function percent(n, d) { return d ? Math.round((n / d) * 1000) / 10 : 0; }
 let RAW = [];
 let NUMERIC_COLS = [];
 let CHARTS = {};
+let PLAYER_NAMES = [];
 
 /* ============================
    Bootstrap
@@ -83,6 +84,12 @@ function onCsvLoaded(rows) {
   NUMERIC_COLS = Object.keys(RAW[0]).filter(
     (k) => NUMERIC_HINTS.includes(k) || typeof RAW[0][k] === "number"
   );
+
+  PLAYER_NAMES = uniq(
+    RAW.flatMap((r) => [r.Player_1 || r.player_1, r.Player_2 || r.player_2])
+  )
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
 
   renderDatasetOverview(RAW);
   renderMissingness(RAW);
@@ -233,7 +240,9 @@ function renderCorrelations(rows, cols) {
 
 function initPlayerAnalytics(rows) {
   populateYearFilter(rows);
+  populatePlayerInput(PLAYER_NAMES);
   renderPlayerAnalytics(rows);
+  renderWinRateTimeline(rows);
 }
 
 function populateYearFilter(rows) {
@@ -301,6 +310,120 @@ function renderPlayerAnalytics(rows) {
   const yKeys = Object.keys(grouped).sort((a, b) => a - b);
   const wr = yKeys.map((y) => percent(grouped[y].wins, grouped[y].matches));
   drawLine("trendChart", yKeys, wr);
+
+  // Prefill player selector with current top player if empty
+  const playerInput = document.getElementById("playerSelect");
+  if (playerInput && !playerInput.value && top.length) {
+    playerInput.value = top[0].player;
+    renderWinRateTimeline(RAW, top[0].player);
+  }
+}
+
+function populatePlayerInput(names) {
+  const list = document.getElementById("playerOptions");
+  const input = document.getElementById("playerSelect");
+  if (!list || !input) return;
+  list.innerHTML = names.map((n) => `<option value="${n}"></option>`).join("");
+  input.onchange = input.onkeyup = () => renderWinRateTimeline(RAW);
+}
+
+function renderWinRateTimeline(rows, presetName) {
+  const message = document.getElementById("playerTimelineMessage");
+  const input = document.getElementById("playerSelect");
+  const targetName = (presetName || (input && input.value) || "").trim();
+
+  const clearChart = (text) => {
+    if (message) message.innerText = text || "";
+    if (CHARTS.winrateTimeline) {
+      CHARTS.winrateTimeline.destroy();
+      CHARTS.winrateTimeline = null;
+    }
+  };
+
+  if (!targetName) {
+    clearChart("Type a player name to see their rolling win rate.");
+    return;
+  }
+
+  const normTarget = targetName.toLowerCase();
+  const matches = rows.filter((r) => {
+    const p1 = (r.Player_1 || r.player_1 || "").toLowerCase();
+    const p2 = (r.Player_2 || r.player_2 || "").toLowerCase();
+    return p1 === normTarget || p2 === normTarget;
+  });
+
+  if (!matches.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  const withDates = matches
+    .map((m) => ({
+      ...m,
+      _dateStr: m.match_date || m.Date || m.date,
+      _date: new Date(m.match_date || m.Date || m.date),
+    }))
+    .filter((m) => m._dateStr && !isNaN(m._date));
+
+  const orderBroken = withDates.some((m, i) => {
+    if (i === 0) return false;
+    return withDates[i - 1]._date > m._date;
+  });
+  if (orderBroken) {
+    console.error(`Match dates for ${targetName} are not sorted; re-sorting.`);
+  }
+
+  const sorted = withDates.sort((a, b) => a._date - b._date);
+  const wins = [];
+  const timeline = sorted.map((m) => {
+    const winner = (m.Winner || m.winner || "").toLowerCase();
+    wins.push(winner === normTarget ? 1 : 0);
+    const window = wins.slice(Math.max(0, wins.length - 10));
+    const rate = window.reduce((a, b) => a + b, 0) / window.length;
+    return {
+      date: m._dateStr,
+      rolling_win_rate: Math.round(rate * 100) / 100,
+    };
+  });
+
+  if (!timeline.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  if (message) message.innerText = `${targetName} — rolling win rate over last 10 matches (adapts for fewer matches).`;
+  const ctx = document.getElementById("winrateTimeline").getContext("2d");
+  if (CHARTS.winrateTimeline) CHARTS.winrateTimeline.destroy();
+  CHARTS.winrateTimeline = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: timeline.map((t) => t.date),
+      datasets: [
+        {
+          label: "Rolling Win Rate",
+          data: timeline.map((t) => t.rolling_win_rate),
+          borderColor: "#58a6ff",
+          backgroundColor: "rgba(88,166,255,0.15)",
+          borderWidth: 2,
+          fill: true,
+          tension: 0.25,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true, max: 1, ticks: { callback: (v) => v.toFixed(2) } },
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Win Rate: ${(ctx.parsed.y * 100).toFixed(1)}%`,
+          },
+        },
+      },
+    },
+  });
 }
 
 /* ============================

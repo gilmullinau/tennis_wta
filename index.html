@@ -89,6 +89,22 @@
           <canvas id="trendChart"></canvas>
         </div>
       </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>🕒 Win-Rate Timeline (Rolling 10)</h3>
+            <p class="muted">Track a player's form over time using a rolling 10-match win rate.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerSelect">Player:</label>
+            <input id="playerSelect" list="playerOptions" placeholder="Type player name" />
+            <datalist id="playerOptions"></datalist>
+          </div>
+        </div>
+        <div id="playerTimelineMessage" class="muted"></div>
+        <canvas id="winrateTimeline"></canvas>
+      </div>
     </section>
 
     <hr class="divider"/>
