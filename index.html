@@ -225,17 +225,17 @@
           <tr><td><b>Surface</b></td><td>Categorical</td><td>Surface type (hard/clay/grass)</td><td>✅ Encoded</td></tr>
           <tr><td><b>Court</b></td><td>Categorical</td><td>Indoor / Outdoor</td><td>✅ Encoded</td></tr>
           <tr><td><b>Round</b></td><td>Categorical</td><td>Tournament round (R32, QF, SF, F)</td><td>✅ Encoded</td></tr>
-          <tr><td><b>recent_win_rate_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Short-horizon rolling win rate over the last 5 matches</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>recent_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches (aligned with correlation analysis)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>recent_win_rate_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Short-horizon rolling win rate over the last 5 matches</td><td>✅ Yes</td></tr>
+          <tr><td><b>recent_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches (aligned with correlation analysis)</td><td>✅ Yes</td></tr>
           <tr><td><b>rolling_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Legacy alias for 10-match rolling form used elsewhere in the dashboard</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>streak_value</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−) shared with the streak timeline</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>fatigue_7d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 7 days (player load)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>fatigue_14d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 14 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>fatigue_30d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 30 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>surface_win_rate_hard_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on hard courts</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>surface_win_rate_clay_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on clay courts</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>surface_win_rate_grass_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on grass courts</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
-          <tr><td><b>surface_trend</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Surface-specific rolling win rate aligned with the current match surface</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>streak_value</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−) shared with the streak timeline</td><td>✅ Yes</td></tr>
+          <tr><td><b>fatigue_7d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 7 days (player load)</td><td>✅ Yes</td></tr>
+          <tr><td><b>fatigue_14d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 14 days</td><td>✅ Yes</td></tr>
+          <tr><td><b>fatigue_30d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 30 days</td><td>✅ Yes</td></tr>
+          <tr><td><b>surface_win_rate_hard_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on hard courts</td><td>✅ Yes</td></tr>
+          <tr><td><b>surface_win_rate_clay_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on clay courts</td><td>✅ Yes</td></tr>
+          <tr><td><b>surface_win_rate_grass_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling 5-match win rate for Player₁ on grass courts</td><td>✅ Yes</td></tr>
+          <tr><td><b>surface_trend</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Surface-specific rolling win rate aligned with the current match surface</td><td>✅ Yes</td></tr>
           <tr><td><b>Player_1 / Player_2</b></td><td>Text</td><td>Player names (used for H2H only)</td><td>❌ No</td></tr>
           <tr><td><b>Winner</b></td><td>Text</td><td>Match winner (reveals target)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
           <tr><td><b>Score</b></td><td>Text</td><td>Final score (reveals outcome)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
