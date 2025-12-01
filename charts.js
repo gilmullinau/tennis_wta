@@ -134,6 +134,7 @@ function onCsvLoaded(rows) {
   buildFeatureButtons(NUMERIC_COLS);
   renderDistributions(RAW, NUMERIC_COLS[0]);
   renderCorrelations(RAW, corrCols);
+  renderFeatureQualityPanel(RAW, NUMERIC_COLS);
   initPlayerAnalytics(RAW);
   setupDatasetDownload();
 }
@@ -456,6 +457,91 @@ function renderCorrelations(rows, cols) {
   });
   html += "</tbody></table>";
   container.innerHTML = html;
+}
+
+/* ============================
+   Feature Quality Panel
+=============================*/
+
+function computeFeatureQualityStats(rows, numericCols) {
+  return numericCols.map((feature) => {
+    const vals = rows
+      .map((r) => toNum(r[feature]))
+      .filter((v) => Number.isFinite(v));
+    const total = rows.length || 1;
+    const missingRate = (total - vals.length) / total;
+
+    if (!vals.length) {
+      return { feature, std: 0, range: 0, missing_rate: missingRate };
+    }
+
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / vals.length;
+    const std = Math.sqrt(variance);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+
+    return { feature, std, range: max - min, missing_rate: missingRate };
+  });
+}
+
+function renderFeatureQualityPanel(rows, numericCols) {
+  const sortSelect = document.getElementById("qualitySortSelect");
+  const tableBody = document.querySelector("#featureQualityTable tbody");
+  const canvas = document.getElementById("qualityBarChart");
+  if (!sortSelect || !tableBody || !canvas) return;
+
+  if (!sortSelect.dataset.bound) {
+    sortSelect.onchange = () => renderFeatureQualityPanel(rows, numericCols);
+    sortSelect.dataset.bound = "1";
+  }
+
+  const stats = computeFeatureQualityStats(rows, numericCols);
+  const sortBy = sortSelect.value || "std";
+
+  const sorted = [...stats].sort((a, b) => (b[sortBy] ?? -Infinity) - (a[sortBy] ?? -Infinity));
+
+  const fmt = (v, digits = 3) => (Number.isFinite(v) ? v.toFixed(digits) : "—");
+
+  tableBody.innerHTML = "";
+  sorted.forEach((s) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${s.feature}</td>
+      <td>${fmt(s.std)}</td>
+      <td>${fmt(s.range)}</td>
+      <td>${(s.missing_rate * 100).toFixed(1)}%</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  const top = sorted.slice(0, 10);
+  const labels = top.map((t) => t.feature);
+  const data = top.map((t) =>
+    sortBy === "missing_rate" ? Math.round(t.missing_rate * 1000) / 10 : t[sortBy]
+  );
+  const metricLabel =
+    sortBy === "missing_rate" ? "Missing %" : sortBy === "range" ? "Range" : "Std";
+
+  const ctx = canvas.getContext("2d");
+  if (CHARTS.qualityBar) CHARTS.qualityBar.destroy();
+  CHARTS.qualityBar = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: metricLabel,
+          data,
+          backgroundColor: "rgba(88,166,255,0.6)",
+        },
+      ],
+    },
+    options: {
+      scales: { y: { beginAtZero: true } },
+      plugins: { legend: { display: false } },
+    },
+  });
 }
 
 /* ============================

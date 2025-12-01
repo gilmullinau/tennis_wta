@@ -21,6 +21,7 @@
     <button onclick="scrollToSection('overview')">Overview</button>
     <button onclick="scrollToSection('distributions')">Distributions</button>
     <button onclick="scrollToSection('correlations')">Correlations</button>
+    <button onclick="scrollToSection('feature-quality')">Feature Quality</button>
     <button onclick="scrollToSection('players')">Players</button>
     <button onclick="scrollToSection('features')">Model Features</button>
   </nav>
@@ -54,6 +55,44 @@
       <h2>Feature Correlations</h2>
       <p>Correlation matrix for numeric features. Green = positive, Red = negative.</p>
       <div class="card" id="corrContainer"></div>
+    </section>
+
+    <hr class="divider"/>
+
+    <!-- === FEATURE QUALITY === -->
+    <section id="feature-quality">
+      <h2>Feature Quality Panel</h2>
+      <p>Assess stability, variability, and completeness of numeric features to guide modeling choices.</p>
+
+      <div class="filter-container">
+        <label for="qualitySortSelect">Sort by:</label>
+        <select id="qualitySortSelect">
+          <option value="std">Std (variability)</option>
+          <option value="range">Range (max - min)</option>
+          <option value="missing_rate">Missing %</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Stability & Completeness</h3>
+          <table id="featureQualityTable" class="quality-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Std</th>
+                <th>Range</th>
+                <th>Missing %</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Top Variability</h3>
+          <canvas id="qualityBarChart"></canvas>
+        </div>
+      </div>
     </section>
 
     <hr class="divider"/>

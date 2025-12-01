@@ -162,6 +162,28 @@ canvas {
 .accent-btn:hover { box-shadow: 0 8px 22px rgba(88, 166, 255, 0.35); }
 .accent-btn:active { transform: translateY(1px); }
 
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-container select {
+  background: #1f2a35;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
 /* Feature buttons */
 .feature-buttons {
   display: flex;
@@ -232,6 +254,20 @@ canvas {
 }
 
 .corr-table th { background-color: #1f2a35; }
+
+.quality-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.quality-table th, .quality-table td {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.7rem;
+}
+
+.quality-table th { background: #1f2a35; }
+.quality-table tr:nth-child(even) td { background: #10161b; }
 
 /* Badges */
 .badge {
