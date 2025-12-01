@@ -119,6 +119,21 @@
         <div id="streakTimelineMessage" class="muted"></div>
         <canvas id="streakTimeline"></canvas>
       </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>🔥 Fatigue Timeline</h3>
+            <p class="muted">Track a player's match load using rolling 7/14/30-day windows.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerFatigueSelect">Player:</label>
+            <select id="playerFatigueSelect"></select>
+          </div>
+        </div>
+        <div id="fatigueTimelineMessage" class="muted"></div>
+        <canvas id="fatigueTimeline"></canvas>
+      </div>
     </section>
 
     <hr class="divider"/>
@@ -158,6 +173,9 @@
           <tr><td><b>Round</b></td><td>Categorical</td><td>Tournament round (R32, QF, SF, F)</td><td>✅ Encoded</td></tr>
           <tr><td><b>rolling_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches for form tracking</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>streak</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>fatigue_7d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 7 days (player load)</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>fatigue_14d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 14 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>fatigue_30d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 30 days</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
           <tr><td><b>Player_1 / Player_2</b></td><td>Text</td><td>Player names (used for H2H only)</td><td>❌ No</td></tr>
           <tr><td><b>Winner</b></td><td>Text</td><td>Match winner (reveals target)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
           <tr><td><b>Score</b></td><td>Text</td><td>Final score (reveals outcome)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>

@@ -19,6 +19,9 @@ const NUMERIC_HINTS = [
   "surface_winrate_adv",
   "rolling_win_rate_10",
   "streak",
+  "fatigue_7d",
+  "fatigue_14d",
+  "fatigue_30d",
   "y",
   "year",
 ];
@@ -94,6 +97,7 @@ function onCsvLoaded(rows) {
   }));
 
   computePlayerFormFeatures(RAW);
+  computePlayerFatigueFeatures(RAW);
 
   NUMERIC_COLS = Object.keys(RAW[0]).filter(
     (k) => NUMERIC_HINTS.includes(k) || typeof RAW[0][k] === "number"
@@ -162,6 +166,61 @@ function computePlayerFormFeatures(rows) {
       if (player1Key === playerKey) {
         row.rolling_win_rate_10 = Math.round(rate * 100) / 100;
         row.streak = streak;
+      }
+    });
+  });
+}
+
+function computePlayerFatigueFeatures(rows) {
+  const normName = (s) => (s || "").toString().trim().toLowerCase();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  rows.forEach((r) => {
+    r.fatigue_7d = null;
+    r.fatigue_14d = null;
+    r.fatigue_30d = null;
+  });
+
+  const matchesByPlayer = new Map();
+
+  rows.forEach((r, idx) => {
+    const dateStr = r.match_date || r.Date || r.date;
+    const date = dateStr ? new Date(dateStr) : null;
+    if (!date || isNaN(date)) return;
+
+    const p1 = r.Player_1 || r.player_1;
+    const p2 = r.Player_2 || r.player_2;
+
+    [p1, p2].forEach((name) => {
+      const key = normName(name);
+      if (!key) return;
+      if (!matchesByPlayer.has(key)) matchesByPlayer.set(key, []);
+      matchesByPlayer.get(key).push({ index: idx, date, ts: date.getTime() });
+    });
+  });
+
+  matchesByPlayer.forEach((matches, playerKey) => {
+    matches.sort((a, b) => a.ts - b.ts || a.index - b.index);
+
+    let start7 = 0,
+      start14 = 0,
+      start30 = 0;
+
+    matches.forEach((m, i) => {
+      while (start7 < i && matches[start7].ts <= m.ts - 7 * dayMs) start7++;
+      while (start14 < i && matches[start14].ts <= m.ts - 14 * dayMs) start14++;
+      while (start30 < i && matches[start30].ts <= m.ts - 30 * dayMs) start30++;
+
+      const fatigue7 = i - start7;
+      const fatigue14 = i - start14;
+      const fatigue30 = i - start30;
+
+      const row = rows[m.index];
+      const player1Key = normName(row.Player_1 || row.player_1);
+      if (player1Key === playerKey) {
+        row.fatigue_7d = fatigue7;
+        row.fatigue_14d = fatigue14;
+        row.fatigue_30d = fatigue30;
       }
     });
   });
@@ -379,7 +438,7 @@ function renderPlayerAnalytics(rows) {
   drawLine("trendChart", yKeys, wr);
 
   // Prefill player selector with current top player if empty
-  const selectIds = ["playerSelect", "playerStreakSelect"];
+  const selectIds = ["playerSelect", "playerStreakSelect", "playerFatigueSelect"];
   const targetSelect = selectIds
     .map((id) => document.getElementById(id))
     .find((el) => el && !el.value);
@@ -391,6 +450,7 @@ function renderPlayerAnalytics(rows) {
       .forEach((el) => (el.value = top[0].player));
     renderWinRateTimeline(RAW, top[0].player);
     renderStreakTimeline(RAW, top[0].player);
+    renderFatigueTimeline(RAW, top[0].player);
   }
 }
 
@@ -398,6 +458,7 @@ function populatePlayerInput(names) {
   const selects = [
     document.getElementById("playerSelect"),
     document.getElementById("playerStreakSelect"),
+    document.getElementById("playerFatigueSelect"),
   ].filter(Boolean);
   if (!selects.length) return;
 
@@ -411,6 +472,7 @@ function populatePlayerInput(names) {
     });
     renderWinRateTimeline(RAW, value);
     renderStreakTimeline(RAW, value);
+    renderFatigueTimeline(RAW, value);
   };
 
   selects.forEach((sel) => {
@@ -481,10 +543,12 @@ function renderWinRateTimeline(rows, presetName) {
   }
 
   const withDates = matches
-    .map((m) => ({
+    .map((m, idx) => ({
       ...m,
       _dateStr: m.match_date || m.Date || m.date,
       _date: new Date(m.match_date || m.Date || m.date),
+      _ts: new Date(m.match_date || m.Date || m.date).getTime(),
+      _idx: idx,
     }))
     .filter((m) => m._dateStr && !isNaN(m._date));
 
@@ -587,10 +651,12 @@ function renderStreakTimeline(rows, presetName) {
   }
 
   const withDates = matches
-    .map((m) => ({
+    .map((m, idx) => ({
       ...m,
       _dateStr: m.match_date || m.Date || m.date,
       _date: new Date(m.match_date || m.Date || m.date),
+      _ts: new Date(m.match_date || m.Date || m.date).getTime(),
+      _idx: idx,
     }))
     .filter((m) => m._dateStr && !isNaN(m._date));
 
@@ -655,6 +721,143 @@ function renderStreakTimeline(rows, presetName) {
         tooltip: {
           callbacks: {
             label: (ctx) => `Streak: ${ctx.parsed.y}`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderFatigueTimeline(rows, presetName) {
+  const message = document.getElementById("fatigueTimelineMessage");
+  const select = document.getElementById("playerFatigueSelect");
+  const linkedSelects = [
+    document.getElementById("playerSelect"),
+    document.getElementById("playerStreakSelect"),
+  ];
+
+  if (select && presetName) {
+    select.value = presetName;
+  }
+  linkedSelects
+    .filter(Boolean)
+    .forEach((el) => {
+      if (presetName) el.value = presetName;
+    });
+
+  const targetName = (presetName || (select && select.value) || "").trim();
+
+  const clearChart = (text) => {
+    if (message) message.innerText = text || "";
+    if (CHARTS.fatigueTimeline) {
+      CHARTS.fatigueTimeline.destroy();
+      CHARTS.fatigueTimeline = null;
+    }
+  };
+
+  if (!targetName) {
+    clearChart("Select a player to see their fatigue timeline.");
+    return;
+  }
+
+  const normTarget = targetName.toLowerCase();
+  const matches = rows.filter((r) => {
+    const p1 = (r.Player_1 || r.player_1 || "").toLowerCase();
+    const p2 = (r.Player_2 || r.player_2 || "").toLowerCase();
+    return p1 === normTarget || p2 === normTarget;
+  });
+
+  if (!matches.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  const withDates = matches
+    .map((m, idx) => ({
+      ...m,
+      _dateStr: m.match_date || m.Date || m.date,
+      _date: new Date(m.match_date || m.Date || m.date),
+      _ts: new Date(m.match_date || m.Date || m.date).getTime(),
+      _idx: idx,
+    }))
+    .filter((m) => m._dateStr && !isNaN(m._date));
+
+  const orderBroken = withDates.some((m, i) => {
+    if (i === 0) return false;
+    return withDates[i - 1]._date > m._date;
+  });
+  if (orderBroken) {
+    console.error(`Match dates for ${targetName} are not sorted; re-sorting.`);
+  }
+
+  const sorted = withDates.sort((a, b) => a._ts - b._ts || a._idx - b._idx);
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  let start7 = 0,
+    start14 = 0,
+    start30 = 0;
+
+  const timeline = sorted.map((m, i) => {
+    while (start7 < i && sorted[start7]._ts <= m._ts - 7 * dayMs) start7++;
+    while (start14 < i && sorted[start14]._ts <= m._ts - 14 * dayMs) start14++;
+    while (start30 < i && sorted[start30]._ts <= m._ts - 30 * dayMs) start30++;
+
+    return {
+      date: m._dateStr,
+      fatigue_7d: i - start7,
+      fatigue_14d: i - start14,
+      fatigue_30d: i - start30,
+    };
+  });
+
+  if (!timeline.length) {
+    clearChart("Player has no match history.");
+    return;
+  }
+
+  if (message)
+    message.innerText = `${targetName} — matches played in the past 7/14/30 days before each match (excluding current).`;
+
+  const ctx = document.getElementById("fatigueTimeline").getContext("2d");
+  if (CHARTS.fatigueTimeline) CHARTS.fatigueTimeline.destroy();
+  CHARTS.fatigueTimeline = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: timeline.map((t) => t.date),
+      datasets: [
+        {
+          label: "Matches last 7d",
+          data: timeline.map((t) => t.fatigue_7d),
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239,68,68,0.12)",
+          borderWidth: 2,
+          tension: 0.3,
+        },
+        {
+          label: "Matches last 14d",
+          data: timeline.map((t) => t.fatigue_14d),
+          borderColor: "#facc15",
+          backgroundColor: "rgba(250,204,21,0.12)",
+          borderWidth: 2,
+          tension: 0.3,
+        },
+        {
+          label: "Matches last 30d",
+          data: timeline.map((t) => t.fatigue_30d),
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.12)",
+          borderWidth: 2,
+          tension: 0.3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, suggestedMax: 10 } },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`,
           },
         },
       },
