@@ -320,17 +320,21 @@ function renderPlayerAnalytics(rows) {
 }
 
 function populatePlayerInput(names) {
-  const list = document.getElementById("playerOptions");
-  const input = document.getElementById("playerSelect");
-  if (!list || !input) return;
-  list.innerHTML = names.map((n) => `<option value="${n}"></option>`).join("");
-  input.onchange = input.onkeyup = () => renderWinRateTimeline(RAW);
+  const select = document.getElementById("playerSelect");
+  if (!select) return;
+  const options = ["<option value=\"\">Select player</option>"];
+  names.forEach((n) => options.push(`<option value="${n}">${n}</option>`));
+  select.innerHTML = options.join("");
+  select.onchange = () => renderWinRateTimeline(RAW);
 }
 
 function renderWinRateTimeline(rows, presetName) {
   const message = document.getElementById("playerTimelineMessage");
-  const input = document.getElementById("playerSelect");
-  const targetName = (presetName || (input && input.value) || "").trim();
+  const select = document.getElementById("playerSelect");
+  if (select && presetName) {
+    select.value = presetName;
+  }
+  const targetName = (presetName || (select && select.value) || "").trim();
 
   const clearChart = (text) => {
     if (message) message.innerText = text || "";
@@ -341,7 +345,7 @@ function renderWinRateTimeline(rows, presetName) {
   };
 
   if (!targetName) {
-    clearChart("Type a player name to see their rolling win rate.");
+    clearChart("Select a player to see their rolling win rate.");
     return;
   }
 

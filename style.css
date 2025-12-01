@@ -185,7 +185,7 @@ canvas {
 
 .player-input label { color: var(--text-muted); font-size: 0.9rem; }
 
-.player-input input {
+.player-input select {
   background: transparent;
   border: none;
   color: var(--text-main);
