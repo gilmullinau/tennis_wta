@@ -242,7 +242,6 @@ function initPlayerAnalytics(rows) {
   populateYearFilter(rows);
   populatePlayerInput(PLAYER_NAMES);
   renderPlayerAnalytics(rows);
-  renderWinRateTimeline(rows);
 }
 
 function populateYearFilter(rows) {
