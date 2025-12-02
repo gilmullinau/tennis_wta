@@ -118,24 +118,15 @@ canvas {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
 }
 
-.upload-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.upload-actions {
-  display: flex;
-  gap: 8px;
+.dataset-copy {
+  flex: 1 1 320px;
 }
 
 .mode-toggle {
-  margin-top: 0.6rem;
+  margin-top: 0.4rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -144,6 +135,12 @@ canvas {
 .mode-buttons {
   display: inline-flex;
   gap: 0.5rem;
+}
+
+.mode-buttons.large .toggle-btn {
+  padding: 0.65rem 1.4rem;
+  font-size: 1rem;
+  min-width: 170px;
 }
 
 .toggle-btn {
@@ -166,22 +163,6 @@ canvas {
 .toggle-btn:hover {
   border-color: #58a6ff;
   color: #58a6ff;
-}
-
-.sr-only-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.upload-controls .small {
-  font-size: 0.85rem;
 }
 
 /* Table */

@@ -32,25 +32,17 @@
     <section id="overview">
       <h2>Dataset Overview</h2>
       <div class="data-source-row">
-        <div>
+        <div class="dataset-copy">
           <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
-          <div id="datasetSource" class="muted">Source: default wta_data.csv</div>
-          <div class="mode-toggle">
-            <label>Dataset mode:</label>
-            <div class="mode-buttons">
-              <button id="modeWTA" class="toggle-btn active">WTA</button>
-              <button id="modeATP" class="toggle-btn">ATP</button>
-            </div>
-            <div class="muted small">Switch between bundled WTA data and Kaggle ATP export.</div>
-          </div>
+          <div id="datasetSource" class="muted">Source: WTA dataset (wta_data.csv)</div>
         </div>
-        <div class="upload-controls">
-          <input type="file" id="datasetUpload" accept=".csv,text/csv" class="sr-only-input" />
-          <div class="upload-actions">
-            <button id="uploadTrigger" class="secondary-btn">Upload CSV Dataset</button>
-            <button id="analyzeDataset" class="accent-btn" disabled>Analyze Dataset</button>
+        <div class="mode-toggle">
+          <p class="muted">Choose dataset mode</p>
+          <div class="mode-buttons large">
+            <button id="modeWTA" class="toggle-btn active">WTA Dataset</button>
+            <button id="modeATP" class="toggle-btn">ATP Dataset</button>
           </div>
-          <div class="muted small">Load your own raw CSV, then click Analyze to preprocess and refresh the dashboard.</div>
+          <div class="muted small">Switch between bundled WTA data and Kaggle ATP export.</div>
         </div>
       </div>
       <div class="card">

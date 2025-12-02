@@ -107,7 +107,6 @@ let CHARTS = {};
 let PLAYER_NAMES = [];
 let CURRENT_SOURCE = "";
 let CURRENT_MODE = "WTA";
-let PENDING_UPLOAD = null;
 
 /* ============================
    Bootstrap
@@ -117,8 +116,6 @@ document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   setupModeToggle();
-  setupDatasetUpload();
-  setupAnalyzeControl();
   loadDatasetForMode(CURRENT_MODE);
 }
 
@@ -145,13 +142,6 @@ function setupModeToggle() {
 
   wtaBtn.onclick = () => activate("WTA");
   atpBtn.onclick = () => activate("ATP");
-}
-
-function setAnalyzeButton(enabled, label = "Analyze Dataset") {
-  const btn = document.getElementById("analyzeDataset");
-  if (!btn) return;
-  btn.disabled = !enabled;
-  btn.innerText = label;
 }
 
 function resetVisuals() {
@@ -200,8 +190,6 @@ function loadDatasetForMode(mode = "WTA") {
   const info = document.getElementById("datasetInfo");
   const cfg = DATASET_MODES[mode] || DATASET_MODES.WTA;
   CURRENT_MODE = mode in DATASET_MODES ? mode : "WTA";
-  PENDING_UPLOAD = null;
-  setAnalyzeButton(false);
 
   if (info) info.innerText = `Loading ${cfg.label}...`;
   setDatasetSource(`Source: ${cfg.label} (${cfg.path})`);
@@ -227,65 +215,6 @@ function loadDatasetForMode(mode = "WTA") {
       if (info) info.innerText = `Error loading ${cfg.label}: ${err}`;
     },
   });
-}
-
-function setupDatasetUpload() {
-  const input = document.getElementById("datasetUpload");
-  const trigger = document.getElementById("uploadTrigger");
-  if (!input || !trigger) return;
-
-  trigger.onclick = () => input.click();
-
-  input.onchange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    e.target.value = "";
-
-    const info = document.getElementById("datasetInfo");
-    if (info) info.innerText = `Loading ${file.name}...`;
-
-    Papa.parse(file, {
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      complete: (res) => {
-        const data = res.data;
-        if (!data || !data.length) {
-          if (info) info.innerText = `Failed to load ${file.name}.`;
-          return;
-        }
-        console.log(`✅ Loaded ${data.length} rows from ${file.name}`);
-        PENDING_UPLOAD = { rows: data, label: file.name };
-        setAnalyzeButton(true);
-        setDatasetSource(`Source: pending ${file.name}`);
-        if (info) info.innerText = `Parsed ${file.name}. Click Analyze to preprocess.`;
-      },
-    });
-  };
-}
-
-function setupAnalyzeControl() {
-  const btn = document.getElementById("analyzeDataset");
-  if (!btn) return;
-
-  btn.onclick = () => {
-    if (!PENDING_UPLOAD) {
-      console.warn("No uploaded dataset to analyze.");
-      const info = document.getElementById("datasetInfo");
-      if (info) info.innerText = "Upload a CSV first, then click Analyze.";
-      return;
-    }
-
-    const { rows, label } = PENDING_UPLOAD;
-    const info = document.getElementById("datasetInfo");
-    if (info) info.innerText = `Analyzing ${label}...`;
-
-    resetVisuals();
-    CURRENT_SOURCE = label;
-    onCsvLoaded(rows, label);
-    PENDING_UPLOAD = null;
-    setAnalyzeButton(false);
-  };
 }
 
 function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
