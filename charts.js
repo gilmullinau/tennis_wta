@@ -63,6 +63,8 @@ const CORR_REQUIRED_FEATURES = [
   "surface_trend",
 ];
 
+const DEFAULT_DATASET_PATH = "wta_data.csv";
+
 function toNum(x) {
   if (x === null || x === undefined) return NaN;
   if (typeof x === "number") return x;
@@ -83,6 +85,7 @@ let RAW = [];
 let NUMERIC_COLS = [];
 let CHARTS = {};
 let PLAYER_NAMES = [];
+let CURRENT_SOURCE = `default ${DEFAULT_DATASET_PATH}`;
 
 /* ============================
    Bootstrap
@@ -91,7 +94,67 @@ let PLAYER_NAMES = [];
 init();
 
 function init() {
-  Papa.parse("wta_data.csv", {
+  setupDatasetUpload();
+  loadDefaultDataset();
+}
+
+/* ============================
+   CSV Handling
+=============================*/
+
+function setDatasetSource(label) {
+  const el = document.getElementById("datasetSource");
+  if (el) el.innerText = label;
+}
+
+function resetVisuals() {
+  RAW = [];
+  NUMERIC_COLS = [];
+  PLAYER_NAMES = [];
+
+  Object.values(CHARTS).forEach((c) => {
+    if (c && typeof c.destroy === "function") c.destroy();
+  });
+  CHARTS = {};
+
+  const containers = ["featureButtons", "corrContainer"];
+  containers.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = "";
+  });
+
+  const tableBody = document.querySelector("#featureQualityTable tbody");
+  if (tableBody) tableBody.innerHTML = "";
+
+  const selects = [
+    "playerSelect",
+    "playerStreakSelect",
+    "playerFatigueSelect",
+    "playerSurfaceSelect",
+    "yearSelect",
+  ];
+  selects.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = "";
+  });
+
+  [
+    "playerTimelineMessage",
+    "streakTimelineMessage",
+    "fatigueTimelineMessage",
+    "surfaceTrendMessage",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = "";
+  });
+}
+
+function loadDefaultDataset() {
+  const info = document.getElementById("datasetInfo");
+  if (info) info.innerText = "Loading dataset summary...";
+  setDatasetSource(`Source: default ${DEFAULT_DATASET_PATH}`);
+
+  Papa.parse(DEFAULT_DATASET_PATH, {
     download: true,
     header: true,
     dynamicTyping: true,
@@ -99,20 +162,53 @@ function init() {
     complete: (res) => {
       const data = res.data;
       if (!data || !data.length) {
-        document.getElementById("datasetInfo").innerText = "Failed to load CSV.";
+        if (info) info.innerText = "Failed to load default CSV.";
         return;
       }
       console.log(`✅ Loaded ${data.length} rows`);
-      onCsvLoaded(data);
+      resetVisuals();
+      CURRENT_SOURCE = `default ${DEFAULT_DATASET_PATH}`;
+      onCsvLoaded(data, CURRENT_SOURCE);
     },
   });
 }
 
-/* ============================
-   CSV Handling
-=============================*/
+function setupDatasetUpload() {
+  const input = document.getElementById("datasetUpload");
+  const trigger = document.getElementById("uploadTrigger");
+  if (!input || !trigger) return;
 
-function onCsvLoaded(rows) {
+  trigger.onclick = () => input.click();
+
+  input.onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const info = document.getElementById("datasetInfo");
+    if (info) info.innerText = `Loading ${file.name}...`;
+
+    Papa.parse(file, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: (res) => {
+        const data = res.data;
+        if (!data || !data.length) {
+          if (info) info.innerText = `Failed to load ${file.name}.`;
+          return;
+        }
+        console.log(`✅ Loaded ${data.length} rows from ${file.name}`);
+        resetVisuals();
+        CURRENT_SOURCE = file.name;
+        onCsvLoaded(data, file.name);
+      },
+    });
+  };
+}
+
+function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
+  setDatasetSource(`Source: ${sourceLabel}`);
   // normalize headers
   const norm = rows.map((r) => {
     const out = {};

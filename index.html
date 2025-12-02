@@ -31,7 +31,17 @@
     <!-- === OVERVIEW === -->
     <section id="overview">
       <h2>Dataset Overview</h2>
-      <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
+      <div class="data-source-row">
+        <div>
+          <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
+          <div id="datasetSource" class="muted">Source: default wta_data.csv</div>
+        </div>
+        <div class="upload-controls">
+          <input type="file" id="datasetUpload" accept=".csv,text/csv" hidden />
+          <button id="uploadTrigger" class="secondary-btn">Upload CSV Dataset</button>
+          <div class="muted small">Load your own feature-engineered CSV to explore it offline.</div>
+        </div>
+      </div>
       <div class="card">
         <h3>Missing Values by Feature</h3>
         <canvas id="missingChart"></canvas>

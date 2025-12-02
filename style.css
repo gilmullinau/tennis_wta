@@ -113,6 +113,26 @@ canvas {
   margin-bottom: 1.5rem;
 }
 
+.data-source-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.upload-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.upload-controls .small {
+  font-size: 0.85rem;
+}
+
 /* Table */
 .info-table {
   width: 100%;
@@ -161,6 +181,21 @@ canvas {
 
 .accent-btn:hover { box-shadow: 0 8px 22px rgba(88, 166, 255, 0.35); }
 .accent-btn:active { transform: translateY(1px); }
+
+.secondary-btn {
+  background: #243447;
+  color: #e0e0e0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  transition: background 0.2s ease, transform 0.08s ease;
+}
+
+.secondary-btn:hover { background: #2d3c4b; }
+.secondary-btn:active { transform: translateY(1px); }
 
 .filter-container {
   display: flex;
