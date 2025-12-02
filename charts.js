@@ -91,7 +91,7 @@ let CURRENT_SOURCE = `default ${DEFAULT_DATASET_PATH}`;
    Bootstrap
 =============================*/
 
-init();
+document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   setupDatasetUpload();

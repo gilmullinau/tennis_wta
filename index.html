@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎾 WTA Tennis Analytics Dashboard</title>
+  <title>🎾 WTA/ATP Tennis Analytics Dashboard</title>
 
   <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,7 +12,7 @@
 
 <body>
   <header>
-    <h1>🎾 WTA Tennis Analytics Dashboard</h1>
+    <h1>🎾 WTA/ATP Tennis Analytics Dashboard</h1>
     <p class="subtitle">Exploratory Data Analysis of Women's Tennis Matches (2006–2025)</p>
   </header>
 
@@ -37,7 +37,7 @@
           <div id="datasetSource" class="muted">Source: default wta_data.csv</div>
         </div>
         <div class="upload-controls">
-          <input type="file" id="datasetUpload" accept=".csv,text/csv" hidden />
+          <input type="file" id="datasetUpload" accept=".csv,text/csv" class="sr-only-input" />
           <button id="uploadTrigger" class="secondary-btn">Upload CSV Dataset</button>
           <div class="muted small">Load your own feature-engineered CSV to explore it offline.</div>
         </div>
