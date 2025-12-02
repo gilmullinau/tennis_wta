@@ -134,6 +134,40 @@ canvas {
   gap: 8px;
 }
 
+.mode-toggle {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mode-buttons {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.toggle-btn {
+  background: none;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s, border-color 0.25s;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(90deg, #238636, #2ea043);
+  border-color: #2ea043;
+  color: #fff;
+  box-shadow: 0 0 18px rgba(46, 160, 67, 0.25);
+}
+
+.toggle-btn:hover {
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
 .sr-only-input {
   position: absolute;
   width: 1px;

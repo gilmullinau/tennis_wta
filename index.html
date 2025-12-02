@@ -35,6 +35,14 @@
         <div>
           <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
           <div id="datasetSource" class="muted">Source: default wta_data.csv</div>
+          <div class="mode-toggle">
+            <label>Dataset mode:</label>
+            <div class="mode-buttons">
+              <button id="modeWTA" class="toggle-btn active">WTA</button>
+              <button id="modeATP" class="toggle-btn">ATP</button>
+            </div>
+            <div class="muted small">Switch between bundled WTA data and Kaggle ATP export.</div>
+          </div>
         </div>
         <div class="upload-controls">
           <input type="file" id="datasetUpload" accept=".csv,text/csv" class="sr-only-input" />

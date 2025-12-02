@@ -74,7 +74,16 @@ const CORR_REQUIRED_FEATURES = [
   "surface_trend",
 ];
 
-const DEFAULT_DATASET_PATH = "wta_data.csv";
+const DATASET_MODES = {
+  WTA: {
+    path: "wta_data.csv",
+    label: "WTA dataset",
+  },
+  ATP: {
+    path: "atp_data.csv", // place Kaggle-exported ATP CSV at this path
+    label: "ATP dataset (Kaggle: m3financial/atp-tennis-data-from-201201-to-201707)",
+  },
+};
 
 function toNum(x) {
   if (x === null || x === undefined) return NaN;
@@ -96,7 +105,8 @@ let RAW = [];
 let NUMERIC_COLS = [];
 let CHARTS = {};
 let PLAYER_NAMES = [];
-let CURRENT_SOURCE = `default ${DEFAULT_DATASET_PATH}`;
+let CURRENT_SOURCE = "";
+let CURRENT_MODE = "WTA";
 let PENDING_UPLOAD = null;
 
 /* ============================
@@ -106,9 +116,10 @@ let PENDING_UPLOAD = null;
 document.addEventListener("DOMContentLoaded", init);
 
 function init() {
+  setupModeToggle();
   setupDatasetUpload();
   setupAnalyzeControl();
-  loadDefaultDataset();
+  loadDatasetForMode(CURRENT_MODE);
 }
 
 /* ============================
@@ -118,6 +129,22 @@ function init() {
 function setDatasetSource(label) {
   const el = document.getElementById("datasetSource");
   if (el) el.innerText = label;
+}
+
+function setupModeToggle() {
+  const wtaBtn = document.getElementById("modeWTA");
+  const atpBtn = document.getElementById("modeATP");
+  if (!wtaBtn || !atpBtn) return;
+
+  const activate = (mode) => {
+    CURRENT_MODE = mode;
+    [wtaBtn, atpBtn].forEach((btn) => btn.classList.remove("active"));
+    (mode === "ATP" ? atpBtn : wtaBtn).classList.add("active");
+    loadDatasetForMode(mode);
+  };
+
+  wtaBtn.onclick = () => activate("WTA");
+  atpBtn.onclick = () => activate("ATP");
 }
 
 function setAnalyzeButton(enabled, label = "Analyze Dataset") {
@@ -169,14 +196,17 @@ function resetVisuals() {
   });
 }
 
-function loadDefaultDataset() {
+function loadDatasetForMode(mode = "WTA") {
   const info = document.getElementById("datasetInfo");
-  if (info) info.innerText = "Loading dataset summary...";
+  const cfg = DATASET_MODES[mode] || DATASET_MODES.WTA;
+  CURRENT_MODE = mode in DATASET_MODES ? mode : "WTA";
   PENDING_UPLOAD = null;
   setAnalyzeButton(false);
-  setDatasetSource(`Source: default ${DEFAULT_DATASET_PATH}`);
 
-  Papa.parse(DEFAULT_DATASET_PATH, {
+  if (info) info.innerText = `Loading ${cfg.label}...`;
+  setDatasetSource(`Source: ${cfg.label} (${cfg.path})`);
+
+  Papa.parse(cfg.path, {
     download: true,
     header: true,
     dynamicTyping: true,
@@ -184,13 +214,17 @@ function loadDefaultDataset() {
     complete: (res) => {
       const data = res.data;
       if (!data || !data.length) {
-        if (info) info.innerText = "Failed to load default CSV.";
+        if (info)
+          info.innerText = `Failed to load ${cfg.label}. Ensure the file ${cfg.path} is accessible.`;
         return;
       }
-      console.log(`✅ Loaded ${data.length} rows`);
+      console.log(`✅ Loaded ${data.length} rows from ${cfg.path}`);
       resetVisuals();
-      CURRENT_SOURCE = `default ${DEFAULT_DATASET_PATH}`;
+      CURRENT_SOURCE = `${cfg.label}`;
       onCsvLoaded(data, CURRENT_SOURCE);
+    },
+    error: (err) => {
+      if (info) info.innerText = `Error loading ${cfg.label}: ${err}`;
     },
   });
 }
