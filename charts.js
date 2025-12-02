@@ -97,6 +97,7 @@ let NUMERIC_COLS = [];
 let CHARTS = {};
 let PLAYER_NAMES = [];
 let CURRENT_SOURCE = `default ${DEFAULT_DATASET_PATH}`;
+let PENDING_UPLOAD = null;
 
 /* ============================
    Bootstrap
@@ -106,6 +107,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   setupDatasetUpload();
+  setupAnalyzeControl();
   loadDefaultDataset();
 }
 
@@ -116,6 +118,13 @@ function init() {
 function setDatasetSource(label) {
   const el = document.getElementById("datasetSource");
   if (el) el.innerText = label;
+}
+
+function setAnalyzeButton(enabled, label = "Analyze Dataset") {
+  const btn = document.getElementById("analyzeDataset");
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.innerText = label;
 }
 
 function resetVisuals() {
@@ -163,6 +172,8 @@ function resetVisuals() {
 function loadDefaultDataset() {
   const info = document.getElementById("datasetInfo");
   if (info) info.innerText = "Loading dataset summary...";
+  PENDING_UPLOAD = null;
+  setAnalyzeButton(false);
   setDatasetSource(`Source: default ${DEFAULT_DATASET_PATH}`);
 
   Papa.parse(DEFAULT_DATASET_PATH, {
@@ -210,11 +221,36 @@ function setupDatasetUpload() {
           return;
         }
         console.log(`✅ Loaded ${data.length} rows from ${file.name}`);
-        resetVisuals();
-        CURRENT_SOURCE = file.name;
-        onCsvLoaded(data, file.name);
+        PENDING_UPLOAD = { rows: data, label: file.name };
+        setAnalyzeButton(true);
+        setDatasetSource(`Source: pending ${file.name}`);
+        if (info) info.innerText = `Parsed ${file.name}. Click Analyze to preprocess.`;
       },
     });
+  };
+}
+
+function setupAnalyzeControl() {
+  const btn = document.getElementById("analyzeDataset");
+  if (!btn) return;
+
+  btn.onclick = () => {
+    if (!PENDING_UPLOAD) {
+      console.warn("No uploaded dataset to analyze.");
+      const info = document.getElementById("datasetInfo");
+      if (info) info.innerText = "Upload a CSV first, then click Analyze.";
+      return;
+    }
+
+    const { rows, label } = PENDING_UPLOAD;
+    const info = document.getElementById("datasetInfo");
+    if (info) info.innerText = `Analyzing ${label}...`;
+
+    resetVisuals();
+    CURRENT_SOURCE = label;
+    onCsvLoaded(rows, label);
+    PENDING_UPLOAD = null;
+    setAnalyzeButton(false);
   };
 }
 

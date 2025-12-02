@@ -38,8 +38,11 @@
         </div>
         <div class="upload-controls">
           <input type="file" id="datasetUpload" accept=".csv,text/csv" class="sr-only-input" />
-          <button id="uploadTrigger" class="secondary-btn">Upload CSV Dataset</button>
-          <div class="muted small">Load your own feature-engineered CSV to explore it offline.</div>
+          <div class="upload-actions">
+            <button id="uploadTrigger" class="secondary-btn">Upload CSV Dataset</button>
+            <button id="analyzeDataset" class="accent-btn" disabled>Analyze Dataset</button>
+          </div>
+          <div class="muted small">Load your own raw CSV, then click Analyze to preprocess and refresh the dashboard.</div>
         </div>
       </div>
       <div class="card">
