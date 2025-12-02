@@ -34,6 +34,17 @@ const NUMERIC_HINTS = [
 // Restrict the downloadable dataset to only model-ready features and the target.
 const MODEL_EXPORT_COLUMNS = [
   "y",
+  "match_date",
+  "Date",
+  "Player_1",
+  "Player_2",
+  "Rank_1",
+  "Rank_2",
+  "Pts_1",
+  "Pts_2",
+  "Odd_1",
+  "Odd_2",
+  "Tournament",
   "rank_diff",
   "pts_diff",
   "odd_diff",
@@ -251,7 +262,7 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
   );
 
   PLAYER_NAMES = uniq(
-    RAW.flatMap((r) => [r.Player_1 || r.player_1, r.Player_2 || r.player_2])
+    RAW.flatMap((r) => [r.Player_1 || r.player_1 || r.Player1 || r.player1, r.Player_2 || r.player_2 || r.Player2 || r.player2])
   )
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
@@ -296,8 +307,8 @@ function preprocessRawDataset(rows) {
     const date = dateStr ? new Date(dateStr) : null;
     if (!date || isNaN(date)) return;
 
-    const p1 = r.Player_1 || r.player_1;
-    const p2 = r.Player_2 || r.player_2;
+    const p1 = r.Player_1 || r.player_1 || r.Player1 || r.player1;
+    const p2 = r.Player_2 || r.player_2 || r.Player2 || r.player2;
     const winner = r.Winner || r.winner;
     const winnerNorm = normLower(winner);
     if (!p1 || !p2 || !winnerNorm) return;
@@ -327,12 +338,12 @@ function preprocessRawDataset(rows) {
       Player_1: p1,
       Player_2: p2,
       Winner: winner,
-      Rank_1: toNum(r.Rank_1 || r.rank_1),
-      Rank_2: toNum(r.Rank_2 || r.rank_2),
+      Rank_1: toNum(r.Rank_1 || r.rank_1 || r.Player1_Rank || r.player1_rank),
+      Rank_2: toNum(r.Rank_2 || r.rank_2 || r.Player2_Rank || r.player2_rank),
       Pts_1: pts1,
       Pts_2: pts2,
-      Odd_1: toNum(r.Odd_1 || r.odd_1),
-      Odd_2: toNum(r.Odd_2 || r.odd_2),
+      Odd_1: toNum(r.Odd_1 || r.odd_1 || r.Player1_Odds || r.player1_odds),
+      Odd_2: toNum(r.Odd_2 || r.odd_2 || r.Player2_Odds || r.player2_odds),
       Surface: r.Surface || r.surface,
       Court: r.Court || r.court,
       Round: r.Round || r.round,
@@ -457,8 +468,8 @@ function computePlayerFormFeatures(rows) {
     const date = dateStr ? new Date(dateStr) : null;
     if (!date || isNaN(date)) return;
 
-    const p1 = r.Player_1 || r.player_1;
-    const p2 = r.Player_2 || r.player_2;
+    const p1 = r.Player_1 || r.player_1 || r.Player1 || r.player1;
+    const p2 = r.Player_2 || r.player_2 || r.Player2 || r.player2;
     const winnerNorm = normName(r.Winner || r.winner);
 
     [p1, p2].forEach((name) => {
@@ -488,7 +499,7 @@ function computePlayerFormFeatures(rows) {
       const rate10 = window10.reduce((a, b) => a + b, 0) / window10.length;
 
       const row = rows[m.index];
-      const player1Key = normName(row.Player_1 || row.player_1);
+      const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
       if (player1Key === playerKey) {
         row.recent_win_rate_5 = Math.round(rate5 * 100) / 100;
         row.recent_win_rate_10 = Math.round(rate10 * 100) / 100;
@@ -517,8 +528,8 @@ function computePlayerFatigueFeatures(rows) {
     const date = dateStr ? new Date(dateStr) : null;
     if (!date || isNaN(date)) return;
 
-    const p1 = r.Player_1 || r.player_1;
-    const p2 = r.Player_2 || r.player_2;
+    const p1 = r.Player_1 || r.player_1 || r.Player1 || r.player1;
+    const p2 = r.Player_2 || r.player_2 || r.Player2 || r.player2;
 
     [p1, p2].forEach((name) => {
       const key = normName(name);
@@ -545,7 +556,7 @@ function computePlayerFatigueFeatures(rows) {
       const fatigue30 = i - start30;
 
       const row = rows[m.index];
-      const player1Key = normName(row.Player_1 || row.player_1);
+      const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
       if (player1Key === playerKey) {
         row.fatigue_7d = fatigue7;
         row.fatigue_14d = fatigue14;
@@ -573,8 +584,8 @@ function computePlayerSurfaceTrendFeatures(rows) {
     const date = dateStr ? new Date(dateStr) : null;
     if (!date || isNaN(date)) return;
 
-    const p1 = r.Player_1 || r.player_1;
-    const p2 = r.Player_2 || r.player_2;
+    const p1 = r.Player_1 || r.player_1 || r.Player1 || r.player1;
+    const p2 = r.Player_2 || r.player_2 || r.Player2 || r.player2;
     const winnerNorm = normName(r.Winner || r.winner);
 
     [p1, p2].forEach((name) => {
@@ -611,7 +622,7 @@ function computePlayerSurfaceTrendFeatures(rows) {
       const trend = clamp(shortRate - longRate, -1, 1);
 
       const row = rows[m.index];
-      const player1Key = normName(row.Player_1 || row.player_1);
+      const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
       const surf = (row.Surface || row.surface || "").toLowerCase();
       if (player1Key === playerKey && surf === surface) {
         row.surface_trend = Math.round(trend * 100) / 100;
