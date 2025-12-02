@@ -30,6 +30,29 @@ const NUMERIC_HINTS = [
   "year",
 ];
 
+// Columns that should be exported for model training / inference.
+// Restrict the downloadable dataset to only model-ready features and the target.
+const MODEL_EXPORT_COLUMNS = [
+  "y",
+  "rank_diff",
+  "pts_diff",
+  "odd_diff",
+  "h2h_advantage",
+  "last_winner",
+  "surface_winrate_adv",
+  "year",
+  "Surface",
+  "Court",
+  "Round",
+  "recent_win_rate_5",
+  "recent_win_rate_10",
+  "streak_value",
+  "fatigue_7d",
+  "fatigue_14d",
+  "fatigue_30d",
+  "surface_trend",
+];
+
 const CORR_REQUIRED_FEATURES = [
   "recent_win_rate_5",
   "recent_win_rate_10",
@@ -691,7 +714,15 @@ function setupDatasetDownload() {
       console.warn("No data loaded to export.");
       return;
     }
-    const csv = Papa.unparse(RAW);
+    const filtered = RAW.map((row) => {
+      const clean = {};
+      MODEL_EXPORT_COLUMNS.forEach((col) => {
+        if (row.hasOwnProperty(col)) clean[col] = row[col];
+      });
+      return clean;
+    });
+
+    const csv = Papa.unparse(filtered);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
