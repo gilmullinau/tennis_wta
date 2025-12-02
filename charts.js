@@ -219,20 +219,27 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
     return out;
   });
 
-  // ensure numeric fields exist
-  RAW = norm.map((r) => ({
-    ...r,
-    year: r.year ?? parseInt(String(r.Date).slice(0, 4)),
-    y: toNum(r.y),
-    rank_diff: toNum(r.rank_diff),
-    pts_diff: toNum(r.pts_diff),
-    odd_diff: toNum(r.odd_diff),
-  }));
+  const baseRows = ensureFeatureEngineering(norm);
 
-  RAW.forEach((r) => {
-    delete r.surface_win_rate_hard_5;
-    delete r.surface_win_rate_clay_5;
-    delete r.surface_win_rate_grass_5;
+  // ensure numeric fields exist
+  RAW = baseRows.map((r) => {
+    const dateStr = r.match_date || r.matchDate || r.Date || r.date;
+    const normalizedDate = normalizeDateString(dateStr);
+    const mapped = {
+      ...r,
+      Date: normalizedDate,
+      match_date: normalizedDate,
+      year: r.year ?? parseInt(String(normalizedDate || "").slice(0, 4)),
+      y: toNum(r.y),
+      rank_diff: toNum(r.rank_diff),
+      pts_diff: toNum(r.pts_diff),
+      odd_diff: toNum(r.odd_diff),
+    };
+
+    delete mapped.surface_win_rate_hard_5;
+    delete mapped.surface_win_rate_clay_5;
+    delete mapped.surface_win_rate_grass_5;
+    return mapped;
   });
 
   computePlayerFormFeatures(RAW);
@@ -259,6 +266,177 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
   renderFeatureQualityPanel(RAW, NUMERIC_COLS);
   initPlayerAnalytics(RAW);
   setupDatasetDownload();
+}
+
+function ensureFeatureEngineering(rows) {
+  if (!rows || !rows.length) return [];
+  const sample = rows[0];
+  const needsProcessing =
+    !("h2h_advantage" in sample) ||
+    !("last_winner" in sample) ||
+    !("surface_winrate_adv" in sample) ||
+    !("rank_diff" in sample) ||
+    !("pts_diff" in sample) ||
+    !("odd_diff" in sample) ||
+    !("y" in sample);
+
+  return needsProcessing ? preprocessRawDataset(rows) : rows;
+}
+
+function preprocessRawDataset(rows) {
+  const normName = (s) => (s || "").toString().trim();
+  const normLower = (s) => normName(s).toLowerCase();
+  const surfaces = ["hard", "clay", "grass"];
+
+  const cleaned = [];
+  const seen = new Set();
+
+  rows.forEach((r) => {
+    const dateStr = r.Date || r.date || r.match_date || r.matchDate;
+    const date = dateStr ? new Date(dateStr) : null;
+    if (!date || isNaN(date)) return;
+
+    const p1 = r.Player_1 || r.player_1;
+    const p2 = r.Player_2 || r.player_2;
+    const winner = r.Winner || r.winner;
+    const winnerNorm = normLower(winner);
+    if (!p1 || !p2 || !winnerNorm) return;
+
+    const p1Norm = normLower(p1);
+    const p2Norm = normLower(p2);
+    if (winnerNorm !== p1Norm && winnerNorm !== p2Norm) return;
+
+    const pts1 = toNum(r.Pts_1 || r.pts_1);
+    const pts2 = toNum(r.Pts_2 || r.pts_2);
+    if ((Number.isFinite(pts1) && pts1 < 0) || (Number.isFinite(pts2) && pts2 < 0)) return;
+
+    const sig = [
+      date.toISOString().slice(0, 10),
+      r.Tournament || r.tournament,
+      r.Round || r.round,
+      p1,
+      p2,
+    ].join("|");
+
+    if (seen.has(sig)) return;
+    seen.add(sig);
+
+    cleaned.push({
+      ...r,
+      Date: date,
+      Player_1: p1,
+      Player_2: p2,
+      Winner: winner,
+      Rank_1: toNum(r.Rank_1 || r.rank_1),
+      Rank_2: toNum(r.Rank_2 || r.rank_2),
+      Pts_1: pts1,
+      Pts_2: pts2,
+      Odd_1: toNum(r.Odd_1 || r.odd_1),
+      Odd_2: toNum(r.Odd_2 || r.odd_2),
+      Surface: r.Surface || r.surface,
+      Court: r.Court || r.court,
+      Round: r.Round || r.round,
+      year: date.getFullYear(),
+    });
+  });
+
+  cleaned.sort((a, b) => a.Date - b.Date);
+
+  const h2hWins = new Map();
+  const lastWinnerMap = new Map();
+  const surfaceWins = new Map();
+
+  const swapNeeded = (row) => {
+    const r1 = row.Rank_1;
+    const r2 = row.Rank_2;
+    const o1 = row.Odd_1;
+    const o2 = row.Odd_2;
+    if (Number.isFinite(r1) && Number.isFinite(r2) && r1 > r2) return true;
+    if (!Number.isFinite(r1) && Number.isFinite(r2)) return true;
+    if (Number.isFinite(r1) && Number.isFinite(r2) && r1 === r2 && Number.isFinite(o1) && Number.isFinite(o2))
+      return o1 > o2;
+    return false;
+  };
+
+  cleaned.forEach((row) => {
+    if (swapNeeded(row)) {
+      [row.Player_1, row.Player_2] = [row.Player_2, row.Player_1];
+      [row.Rank_1, row.Rank_2] = [row.Rank_2, row.Rank_1];
+      [row.Pts_1, row.Pts_2] = [row.Pts_2, row.Pts_1];
+      [row.Odd_1, row.Odd_2] = [row.Odd_2, row.Odd_1];
+    }
+
+    const p1 = row.Player_1;
+    const p2 = row.Player_2;
+    const key = [p1, p2].sort().join("|");
+
+    row.y = normLower(row.Winner) === normLower(row.Player_1) ? 1 : 0;
+    row.rank_diff = toNum(row.Rank_2) - toNum(row.Rank_1);
+    row.pts_diff = toNum(row.Pts_1) - toNum(row.Pts_2);
+    row.odd_diff = toNum(row.Odd_2) - toNum(row.Odd_1);
+
+    const [winsA = 0, winsB = 0] = h2hWins.get(key) || [0, 0];
+    if (p1 === key.split("|")[0]) row.h2h_advantage = winsA - winsB;
+    else row.h2h_advantage = winsB - winsA;
+
+    const lastWin = lastWinnerMap.get(key);
+    if (lastWin === p1) row.last_winner = 1;
+    else if (lastWin === p2) row.last_winner = 0;
+    else row.last_winner = NaN;
+
+    const surf = (row.Surface || "").toString().toLowerCase();
+    if (!surfaces.includes(surf)) row.surface_winrate_adv = 0;
+    else {
+      const key1 = `${p1}|${surf}`;
+      const key2 = `${p2}|${surf}`;
+      const [w1 = 0, t1 = 0] = surfaceWins.get(key1) || [0, 0];
+      const [w2 = 0, t2 = 0] = surfaceWins.get(key2) || [0, 0];
+      const winrate1 = t1 > 0 ? w1 / t1 : NaN;
+      const winrate2 = t2 > 0 ? w2 / t2 : NaN;
+      const adv = winrate1 - winrate2;
+      row.surface_winrate_adv = Number.isFinite(adv) ? adv : 0;
+    }
+
+    // update trackers after computing advantage
+    if (row.y === 1) {
+      const baseKey = `${p1}|${surf}`;
+      const [w = 0, t = 0] = surfaceWins.get(baseKey) || [0, 0];
+      surfaceWins.set(baseKey, [w + 1, t + 1]);
+      const baseKey2 = `${p2}|${surf}`;
+      const [w2 = 0, t2 = 0] = surfaceWins.get(baseKey2) || [0, 0];
+      surfaceWins.set(baseKey2, [w2, t2 + 1]);
+    } else {
+      const baseKey = `${p1}|${surf}`;
+      const [w = 0, t = 0] = surfaceWins.get(baseKey) || [0, 0];
+      surfaceWins.set(baseKey, [w, t + 1]);
+      const baseKey2 = `${p2}|${surf}`;
+      const [w2 = 0, t2 = 0] = surfaceWins.get(baseKey2) || [0, 0];
+      surfaceWins.set(baseKey2, [w2 + 1, t2 + 1]);
+    }
+
+    if (row.y === 1) {
+      if (p1 === key.split("|")[0]) h2hWins.set(key, [winsA + 1, winsB]);
+      else h2hWins.set(key, [winsA, winsB + 1]);
+    } else {
+      if (p1 === key.split("|")[0]) h2hWins.set(key, [winsA, winsB + 1]);
+      else h2hWins.set(key, [winsA + 1, winsB]);
+    }
+
+    lastWinnerMap.set(key, row.Winner);
+  });
+
+  return cleaned.map((r) => ({
+    ...r,
+    Date: normalizeDateString(r.Date),
+    match_date: normalizeDateString(r.Date),
+  }));
+}
+
+function normalizeDateString(value) {
+  if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0, 10);
+  if (!value) return value;
+  const parsed = new Date(value);
+  return isNaN(parsed) ? value : parsed.toISOString().slice(0, 10);
 }
 
 function computePlayerFormFeatures(rows) {
