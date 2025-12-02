@@ -26,9 +26,6 @@ const NUMERIC_HINTS = [
   "fatigue_14d",
   "fatigue_30d",
   "surface_trend",
-  "surface_win_rate_hard_5",
-  "surface_win_rate_clay_5",
-  "surface_win_rate_grass_5",
   "y",
   "year",
 ];
@@ -112,6 +109,12 @@ function onCsvLoaded(rows) {
     pts_diff: toNum(r.pts_diff),
     odd_diff: toNum(r.odd_diff),
   }));
+
+  RAW.forEach((r) => {
+    delete r.surface_win_rate_hard_5;
+    delete r.surface_win_rate_clay_5;
+    delete r.surface_win_rate_grass_5;
+  });
 
   computePlayerFormFeatures(RAW);
   computePlayerFatigueFeatures(RAW);
@@ -260,10 +263,7 @@ function computePlayerSurfaceTrendFeatures(rows) {
   const surfaces = ["hard", "clay", "grass"];
 
   rows.forEach((r) => {
-    surfaces.forEach((s) => {
-      r[`surface_win_rate_${s}_5`] = null;
-    });
-    r.surface_trend = null;
+    r.surface_trend = 0;
   });
 
   const matchesByPlayerSurface = new Map();
@@ -302,17 +302,25 @@ function computePlayerSurfaceTrendFeatures(rows) {
     const [playerKey, surface] = mapKey.split("|");
 
     matches.forEach((m) => {
-      wins.push(m.isWin ? 1 : 0);
-      const window = wins.slice(Math.max(0, wins.length - 5));
-      const rate = window.reduce((a, b) => a + b, 0) / window.length;
+      const shortWins = wins.slice(Math.max(0, wins.length - 5));
+      const longWins = wins.slice(Math.max(0, wins.length - 15));
+
+      const shortRate = shortWins.length
+        ? shortWins.reduce((a, b) => a + b, 0) / shortWins.length
+        : 0;
+      const longRate = longWins.length
+        ? longWins.reduce((a, b) => a + b, 0) / longWins.length
+        : 0;
+      const trend = clamp(shortRate - longRate, -1, 1);
 
       const row = rows[m.index];
       const player1Key = normName(row.Player_1 || row.player_1);
       const surf = (row.Surface || row.surface || "").toLowerCase();
       if (player1Key === playerKey && surf === surface) {
-        row[`surface_win_rate_${surface}_5`] = Math.round(rate * 100) / 100;
-        row.surface_trend = Math.round(rate * 100) / 100;
+        row.surface_trend = Math.round(trend * 100) / 100;
       }
+
+      wins.push(m.isWin ? 1 : 0);
     });
   });
 }
