@@ -333,6 +333,8 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV", ageMap = {}) {
     delete mapped.surface_win_rate_hard_5;
     delete mapped.surface_win_rate_clay_5;
     delete mapped.surface_win_rate_grass_5;
+    delete mapped.surface_trend;
+    delete mapped.surfaceTrend;
     return mapped;
   });
 
