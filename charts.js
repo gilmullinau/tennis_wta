@@ -410,11 +410,9 @@ function computeAgeFeatures(rows, ageMap = {}) {
     const matchDate = matchDateStr ? new Date(matchDateStr) : null;
     const player = r.Player_1 || r.player_1 || r.Player1 || r.player1;
     const birth = player ? ageMap[player] : null;
-    let ageVal = null;
-    if (birth && matchDate && !isNaN(matchDate)) {
-      const diffMs = matchDate.getTime() - birth.getTime();
-      ageVal = diffMs / (365.25 * 24 * 60 * 60 * 1000);
-    }
+    const ageVal = birth && matchDate && !isNaN(matchDate)
+      ? computeAgeOnDate(birth, matchDate)
+      : null;
     if (Number.isFinite(ageVal)) {
       const rounded = Math.round(ageVal * 100) / 100;
       r.age = rounded;
@@ -433,6 +431,32 @@ function computeAgeFeatures(rows, ageMap = {}) {
     r.age = rounded;
     r.age_group = getAgeGroup(rounded);
   });
+}
+
+function computeAgeOnDate(birthDate, matchDate) {
+  const birth = birthDate instanceof Date ? birthDate : new Date(birthDate);
+  const match = matchDate instanceof Date ? matchDate : new Date(matchDate);
+  if (isNaN(birth) || isNaN(match)) return null;
+
+  const birthUTC = Date.UTC(birth.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate());
+  const matchUTC = Date.UTC(match.getUTCFullYear(), match.getUTCMonth(), match.getUTCDate());
+  if (matchUTC < birthUTC) return null;
+
+  const matchYear = new Date(matchUTC).getUTCFullYear();
+  const birthMonth = birth.getUTCMonth();
+  const birthDay = birth.getUTCDate();
+
+  let years = matchYear - birth.getUTCFullYear();
+  const birthdayThisYear = Date.UTC(matchYear, birthMonth, birthDay);
+  if (matchUTC < birthdayThisYear) years -= 1;
+
+  const lastBirthdayYear = matchUTC < birthdayThisYear ? matchYear - 1 : matchYear;
+  const lastBirthday = Date.UTC(lastBirthdayYear, birthMonth, birthDay);
+  const nextBirthday = Date.UTC(lastBirthdayYear + 1, birthMonth, birthDay);
+  const daysSinceLastBirthday = (matchUTC - lastBirthday) / (1000 * 60 * 60 * 24);
+  const daysInYear = (nextBirthday - lastBirthday) / (1000 * 60 * 60 * 24);
+
+  return years + daysSinceLastBirthday / daysInYear;
 }
 
 function getAgeGroup(age) {
