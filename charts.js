@@ -25,6 +25,16 @@ const NUMERIC_HINTS = [
   "fatigue_7d",
   "fatigue_14d",
   "fatigue_30d",
+  "streak_1",
+  "streak_2",
+  "streak_value_1",
+  "streak_value_2",
+  "fatigue_7d_1",
+  "fatigue_7d_2",
+  "fatigue_14d_1",
+  "fatigue_14d_2",
+  "fatigue_30d_1",
+  "fatigue_30d_2",
   "surface_trend",
   "y",
   "year",
@@ -59,9 +69,19 @@ const MODEL_EXPORT_COLUMNS = [
   "recent_win_rate_5",
   "recent_win_rate_10",
   "streak_value",
+  "streak_1",
+  "streak_2",
+  "streak_value_1",
+  "streak_value_2",
   "fatigue_7d",
   "fatigue_14d",
   "fatigue_30d",
+  "fatigue_7d_1",
+  "fatigue_7d_2",
+  "fatigue_14d_1",
+  "fatigue_14d_2",
+  "fatigue_30d_1",
+  "fatigue_30d_2",
   "surface_trend",
   "age",
   "age_group",
@@ -73,9 +93,19 @@ const CORR_REQUIRED_FEATURES = [
   "recent_win_rate_5",
   "recent_win_rate_10",
   "streak_value",
+  "streak_1",
+  "streak_2",
+  "streak_value_1",
+  "streak_value_2",
   "fatigue_7d",
   "fatigue_14d",
   "fatigue_30d",
+  "fatigue_7d_1",
+  "fatigue_7d_2",
+  "fatigue_14d_1",
+  "fatigue_14d_2",
+  "fatigue_30d_1",
+  "fatigue_30d_2",
   "surface_trend",
 ];
 
@@ -570,6 +600,10 @@ function computePlayerFormFeatures(rows) {
     r.rolling_win_rate_10 = null;
     r.streak = null;
     r.streak_value = null;
+    r.streak_1 = null;
+    r.streak_2 = null;
+    r.streak_value_1 = null;
+    r.streak_value_2 = null;
   });
 
   const matchesByPlayer = new Map();
@@ -611,12 +645,20 @@ function computePlayerFormFeatures(rows) {
 
       const row = rows[m.index];
       const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
+      const player2Key = normName(row.Player_2 || row.player_2 || row.Player2 || row.player2);
       if (player1Key === playerKey) {
         row.recent_win_rate_5 = Math.round(rate5 * 100) / 100;
         row.recent_win_rate_10 = Math.round(rate10 * 100) / 100;
         row.rolling_win_rate_10 = Math.round(rate10 * 100) / 100;
         row.streak = streak;
         row.streak_value = streak;
+        row.streak_1 = streak;
+        row.streak_value_1 = streak;
+      }
+
+      if (player2Key === playerKey) {
+        row.streak_2 = streak;
+        row.streak_value_2 = streak;
       }
     });
   });
@@ -630,6 +672,12 @@ function computePlayerFatigueFeatures(rows) {
     r.fatigue_7d = null;
     r.fatigue_14d = null;
     r.fatigue_30d = null;
+    r.fatigue_7d_1 = null;
+    r.fatigue_14d_1 = null;
+    r.fatigue_30d_1 = null;
+    r.fatigue_7d_2 = null;
+    r.fatigue_14d_2 = null;
+    r.fatigue_30d_2 = null;
   });
 
   const matchesByPlayer = new Map();
@@ -668,10 +716,20 @@ function computePlayerFatigueFeatures(rows) {
 
       const row = rows[m.index];
       const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
+      const player2Key = normName(row.Player_2 || row.player_2 || row.Player2 || row.player2);
       if (player1Key === playerKey) {
         row.fatigue_7d = fatigue7;
         row.fatigue_14d = fatigue14;
         row.fatigue_30d = fatigue30;
+        row.fatigue_7d_1 = fatigue7;
+        row.fatigue_14d_1 = fatigue14;
+        row.fatigue_30d_1 = fatigue30;
+      }
+
+      if (player2Key === playerKey) {
+        row.fatigue_7d_2 = fatigue7;
+        row.fatigue_14d_2 = fatigue14;
+        row.fatigue_30d_2 = fatigue30;
       }
     });
   });
