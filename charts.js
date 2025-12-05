@@ -30,7 +30,8 @@ const NUMERIC_HINTS = [
   "fatigue_14d_2",
   "fatigue_30d_1",
   "fatigue_30d_2",
-  "surface_trend",
+  "surface_trend_1",
+  "surface_trend_2",
   "y",
   "year",
   "age",
@@ -73,7 +74,8 @@ const MODEL_EXPORT_COLUMNS = [
   "fatigue_14d_2",
   "fatigue_30d_1",
   "fatigue_30d_2",
-  "surface_trend",
+  "surface_trend_1",
+  "surface_trend_2",
   "age",
   "age_group",
 ];
@@ -93,7 +95,8 @@ const CORR_REQUIRED_FEATURES = [
   "fatigue_14d_2",
   "fatigue_30d_1",
   "fatigue_30d_2",
-  "surface_trend",
+  "surface_trend_1",
+  "surface_trend_2",
 ];
 
 const DATASET_MODES = {
@@ -717,7 +720,8 @@ function computePlayerSurfaceTrendFeatures(rows) {
   const surfaces = ["hard", "clay", "grass"];
 
   rows.forEach((r) => {
-    r.surface_trend = 0;
+    r.surface_trend_1 = 0;
+    r.surface_trend_2 = 0;
   });
 
   const matchesByPlayerSurface = new Map();
@@ -769,9 +773,16 @@ function computePlayerSurfaceTrendFeatures(rows) {
 
       const row = rows[m.index];
       const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
+      const player2Key = normName(row.Player_2 || row.player_2 || row.Player2 || row.player2);
       const surf = (row.Surface || row.surface || "").toLowerCase();
+      const trendRounded = Math.round(trend * 100) / 100;
+
       if (player1Key === playerKey && surf === surface) {
-        row.surface_trend = Math.round(trend * 100) / 100;
+        row.surface_trend_1 = trendRounded;
+      }
+
+      if (player2Key === playerKey && surf === surface) {
+        row.surface_trend_2 = trendRounded;
       }
 
       wins.push(m.isWin ? 1 : 0);
