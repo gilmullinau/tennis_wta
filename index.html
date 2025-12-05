@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎾 WTA Tennis Analytics Dashboard</title>
+  <title>🎾 WTA/ATP Tennis Analytics Dashboard</title>
 
   <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,8 +12,8 @@
 
 <body>
   <header>
-    <h1>🎾 WTA Tennis Analytics Dashboard</h1>
-    <p class="subtitle">Exploratory Data Analysis of Women's Tennis Matches (2006–2025)</p>
+    <h1>🎾 WTA/ATP Tennis Analytics Dashboard</h1>
+    <p class="subtitle">Exploratory Data Analysis of Tennis Matches</p>
   </header>
 
   <!-- Навигация -->
@@ -21,6 +21,7 @@
     <button onclick="scrollToSection('overview')">Overview</button>
     <button onclick="scrollToSection('distributions')">Distributions</button>
     <button onclick="scrollToSection('correlations')">Correlations</button>
+    <button onclick="scrollToSection('feature-quality')">Feature Quality</button>
     <button onclick="scrollToSection('players')">Players</button>
     <button onclick="scrollToSection('features')">Model Features</button>
   </nav>
@@ -30,7 +31,20 @@
     <!-- === OVERVIEW === -->
     <section id="overview">
       <h2>Dataset Overview</h2>
-      <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
+      <div class="data-source-row">
+        <div class="dataset-copy">
+          <div id="datasetInfo" class="dataset-info">Loading dataset summary...</div>
+          <div id="datasetSource" class="muted">Source: WTA dataset (wta_data.csv)</div>
+        </div>
+        <div class="mode-toggle">
+          <p class="muted">Choose dataset mode</p>
+          <div class="mode-buttons large">
+            <button id="modeWTA" class="toggle-btn active">WTA Dataset</button>
+            <button id="modeATP" class="toggle-btn">ATP Dataset</button>
+          </div>
+          <div class="muted small">Switch between bundled WTA data and Kaggle ATP export.</div>
+        </div>
+      </div>
       <div class="card">
         <h3>Missing Values by Feature</h3>
         <canvas id="missingChart"></canvas>
@@ -54,6 +68,44 @@
       <h2>Feature Correlations</h2>
       <p>Correlation matrix for numeric features. Green = positive, Red = negative.</p>
       <div class="card" id="corrContainer"></div>
+    </section>
+
+    <hr class="divider"/>
+
+    <!-- === FEATURE QUALITY === -->
+    <section id="feature-quality">
+      <h2>Feature Quality Panel</h2>
+      <p>Assess stability, variability, and completeness of numeric features to guide modeling choices.</p>
+
+      <div class="filter-container">
+        <label for="qualitySortSelect">Sort by:</label>
+        <select id="qualitySortSelect">
+          <option value="std">Std (variability)</option>
+          <option value="range">Range (max - min)</option>
+          <option value="missing_rate">Missing %</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Stability & Completeness</h3>
+          <table id="featureQualityTable" class="quality-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Std</th>
+                <th>Range</th>
+                <th>Missing %</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Top Variability</h3>
+          <canvas id="qualityBarChart"></canvas>
+        </div>
+      </div>
     </section>
 
     <hr class="divider"/>
@@ -89,6 +141,66 @@
           <canvas id="trendChart"></canvas>
         </div>
       </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>🕒 Win-Rate Timeline (Rolling 10)</h3>
+            <p class="muted">Track a player's form over time using a rolling 10-match win rate.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerSelect">Player:</label>
+            <select id="playerSelect"></select>
+          </div>
+        </div>
+        <div id="playerTimelineMessage" class="muted"></div>
+        <canvas id="winrateTimeline"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>📊 Streak Timeline</h3>
+            <p class="muted">See winning and losing streaks as they evolve over the player's career.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerStreakSelect">Player:</label>
+            <select id="playerStreakSelect"></select>
+          </div>
+        </div>
+        <div id="streakTimelineMessage" class="muted"></div>
+        <canvas id="streakTimeline"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>🔥 Fatigue Timeline</h3>
+            <p class="muted">Track a player's match load using rolling 7/14/30-day windows.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerFatigueSelect">Player:</label>
+            <select id="playerFatigueSelect"></select>
+          </div>
+        </div>
+        <div id="fatigueTimelineMessage" class="muted"></div>
+        <canvas id="fatigueTimeline"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
+            <h3>🌍 Surface Trend Analysis</h3>
+            <p class="muted">Rolling 5-match win rates on hard, clay, and grass to reveal surface-specific form.</p>
+          </div>
+          <div class="player-input">
+            <label for="playerSurfaceSelect">Player:</label>
+            <select id="playerSurfaceSelect"></select>
+          </div>
+        </div>
+        <div id="surfaceTrendMessage" class="muted"></div>
+        <canvas id="surfaceTrendTimeline"></canvas>
+      </div>
     </section>
 
     <hr class="divider"/>
@@ -100,6 +212,11 @@
         The following features were selected based on exploratory analysis, domain understanding, and correlation relevance.
         Variables marked as <span class="badge leakage">leakage</span> or <span class="badge optional">optional</span> are excluded from the predictive model.
       </p>
+
+      <div class="download-row">
+        <button id="downloadDataset" class="accent-btn">Download Model Dataset</button>
+        <span class="muted">Exports the current feature-engineered dataset used across the dashboard.</span>
+      </div>
 
       <table class="info-table">
         <thead>
@@ -121,6 +238,14 @@
           <tr><td><b>Surface</b></td><td>Categorical</td><td>Surface type (hard/clay/grass)</td><td>✅ Encoded</td></tr>
           <tr><td><b>Court</b></td><td>Categorical</td><td>Indoor / Outdoor</td><td>✅ Encoded</td></tr>
           <tr><td><b>Round</b></td><td>Categorical</td><td>Tournament round (R32, QF, SF, F)</td><td>✅ Encoded</td></tr>
+          <tr><td><b>recent_win_rate_5</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Short-horizon rolling win rate over the last 5 matches</td><td>✅ Yes</td></tr>
+          <tr><td><b>recent_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Rolling win rate over the last 10 matches (aligned with correlation analysis)</td><td>✅ Yes</td></tr>
+          <tr><td><b>rolling_win_rate_10</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Legacy alias for 10-match rolling form used elsewhere in the dashboard</td><td><span class="badge optional">⚙️ Optional</span></td></tr>
+          <tr><td><b>streak_value</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Signed counter of consecutive wins (+) or losses (−) shared with the streak timeline</td><td>✅ Yes</td></tr>
+          <tr><td><b>fatigue_7d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 7 days (player load)</td><td>✅ Yes</td></tr>
+          <tr><td><b>fatigue_14d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 14 days</td><td>✅ Yes</td></tr>
+          <tr><td><b>fatigue_30d</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Matches played in the previous 30 days</td><td>✅ Yes</td></tr>
+          <tr><td><b>surface_trend</b> <span class="badge derived">Derived</span></td><td>Numeric</td><td>Short-term (5-match) minus long-term (15-match) win rate for Player₁ on the current surface</td><td>✅ Yes</td></tr>
           <tr><td><b>Player_1 / Player_2</b></td><td>Text</td><td>Player names (used for H2H only)</td><td>❌ No</td></tr>
           <tr><td><b>Winner</b></td><td>Text</td><td>Match winner (reveals target)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
           <tr><td><b>Score</b></td><td>Text</td><td>Final score (reveals outcome)</td><td><span class="badge leakage">❌ Leakage</span></td></tr>
