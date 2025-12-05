@@ -210,10 +210,21 @@ function loadPlayerAgeMap(mode = CURRENT_MODE) {
 function parseBirthdate(val) {
   if (!val) return null;
   if (val instanceof Date && !isNaN(val)) return val;
-  const date = new Date(val);
+  const raw = String(val).trim();
+
+  // Accept common "dd.mm.yyyy" (or dd-mm-yyyy / dd/mm/yyyy) formats used in player_age CSV files.
+  const dotMatch = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (dotMatch) {
+    const [, d, m, y] = dotMatch;
+    const year = y.length === 2 ? (Number(y) >= 70 ? `19${y}` : `20${y}`) : y;
+    const parsed = new Date(Date.UTC(Number(year), Number(m) - 1, Number(d)));
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  const date = new Date(raw);
   if (!isNaN(date)) return date;
 
-  const num = parseFloat(val);
+  const num = parseFloat(raw);
   if (Number.isFinite(num) && num > 1000) {
     const excelEpoch = new Date(Math.round((num - 25569) * 86400 * 1000));
     if (!isNaN(excelEpoch)) return excelEpoch;
