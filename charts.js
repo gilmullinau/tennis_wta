@@ -335,6 +335,16 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV", ageMap = {}) {
     delete mapped.surface_win_rate_grass_5;
     delete mapped.surface_trend;
     delete mapped.surfaceTrend;
+    Object.keys(mapped).forEach((k) => {
+      const lower = k.toLowerCase();
+      if (
+        lower.startsWith("surface_trend") &&
+        lower !== "surface_trend_1" &&
+        lower !== "surface_trend_2"
+      ) {
+        delete mapped[k];
+      }
+    });
     return mapped;
   });
 
