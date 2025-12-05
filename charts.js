@@ -20,11 +20,6 @@ const NUMERIC_HINTS = [
   "last_winner",
   "surface_winrate_adv",
   "rolling_win_rate_10",
-  "streak",
-  "streak_value",
-  "fatigue_7d",
-  "fatigue_14d",
-  "fatigue_30d",
   "streak_1",
   "streak_2",
   "streak_value_1",
@@ -68,14 +63,10 @@ const MODEL_EXPORT_COLUMNS = [
   "Round",
   "recent_win_rate_5",
   "recent_win_rate_10",
-  "streak_value",
   "streak_1",
   "streak_2",
   "streak_value_1",
   "streak_value_2",
-  "fatigue_7d",
-  "fatigue_14d",
-  "fatigue_30d",
   "fatigue_7d_1",
   "fatigue_7d_2",
   "fatigue_14d_1",
@@ -92,14 +83,10 @@ const STABILITY_CATEGORICALS = ["age_group"];
 const CORR_REQUIRED_FEATURES = [
   "recent_win_rate_5",
   "recent_win_rate_10",
-  "streak_value",
   "streak_1",
   "streak_2",
   "streak_value_1",
   "streak_value_2",
-  "fatigue_7d",
-  "fatigue_14d",
-  "fatigue_30d",
   "fatigue_7d_1",
   "fatigue_7d_2",
   "fatigue_14d_1",
@@ -598,8 +585,6 @@ function computePlayerFormFeatures(rows) {
     r.recent_win_rate_5 = null;
     r.recent_win_rate_10 = null;
     r.rolling_win_rate_10 = null;
-    r.streak = null;
-    r.streak_value = null;
     r.streak_1 = null;
     r.streak_2 = null;
     r.streak_value_1 = null;
@@ -650,8 +635,6 @@ function computePlayerFormFeatures(rows) {
         row.recent_win_rate_5 = Math.round(rate5 * 100) / 100;
         row.recent_win_rate_10 = Math.round(rate10 * 100) / 100;
         row.rolling_win_rate_10 = Math.round(rate10 * 100) / 100;
-        row.streak = streak;
-        row.streak_value = streak;
         row.streak_1 = streak;
         row.streak_value_1 = streak;
       }
@@ -669,9 +652,6 @@ function computePlayerFatigueFeatures(rows) {
   const dayMs = 24 * 60 * 60 * 1000;
 
   rows.forEach((r) => {
-    r.fatigue_7d = null;
-    r.fatigue_14d = null;
-    r.fatigue_30d = null;
     r.fatigue_7d_1 = null;
     r.fatigue_14d_1 = null;
     r.fatigue_30d_1 = null;
@@ -718,9 +698,6 @@ function computePlayerFatigueFeatures(rows) {
       const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
       const player2Key = normName(row.Player_2 || row.player_2 || row.Player2 || row.player2);
       if (player1Key === playerKey) {
-        row.fatigue_7d = fatigue7;
-        row.fatigue_14d = fatigue14;
-        row.fatigue_30d = fatigue30;
         row.fatigue_7d_1 = fatigue7;
         row.fatigue_14d_1 = fatigue14;
         row.fatigue_30d_1 = fatigue30;
