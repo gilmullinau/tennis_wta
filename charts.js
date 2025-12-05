@@ -1181,6 +1181,7 @@ function renderPlayerAnalytics(rows) {
       .filter(Boolean)
       .forEach((el) => (el.value = top[0].player));
     renderWinRateTimeline(RAW, top[0].player);
+    renderAgeProfileTimeline(RAW, top[0].player);
     renderStreakTimeline(RAW, top[0].player);
     renderFatigueTimeline(RAW, top[0].player);
     renderSurfaceTrendTimeline(RAW, top[0].player);
