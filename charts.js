@@ -103,10 +103,12 @@ const DATASET_MODES = {
   WTA: {
     path: "wta_data.csv",
     label: "WTA dataset",
+    agePath: "player_age_wta.csv",
   },
   ATP: {
     path: "atp_data.csv", // place Kaggle-exported ATP CSV at this path
     label: "ATP dataset (Kaggle: m3financial/atp-tennis-data-from-201201-to-201707)",
+    agePath: "player_age_atp.csv",
   },
 };
 
@@ -139,6 +141,7 @@ let PLAYER_NAMES = [];
 let CURRENT_SOURCE = "";
 let CURRENT_MODE = "WTA";
 let AGE_MAP = null;
+let AGE_CACHE = {};
 
 /* ============================
    Bootstrap
@@ -160,11 +163,17 @@ function setDatasetSource(label) {
   if (el) el.innerText = label;
 }
 
-function loadPlayerAgeMap() {
-  if (AGE_MAP !== null) return Promise.resolve(AGE_MAP);
+function loadPlayerAgeMap(mode = CURRENT_MODE) {
+  const cfg = DATASET_MODES[mode] || {};
+  const agePath = cfg.agePath || "player_age.csv";
+
+  if (AGE_CACHE[agePath]) {
+    AGE_MAP = AGE_CACHE[agePath];
+    return Promise.resolve(AGE_MAP);
+  }
 
   return new Promise((resolve) => {
-    Papa.parse("player_age.csv", {
+    Papa.parse(agePath, {
       download: true,
       header: true,
       dynamicTyping: false,
@@ -183,13 +192,15 @@ function loadPlayerAgeMap() {
           const birthDate = parseBirthdate(birthRaw);
           if (name && birthDate) map[name] = birthDate;
         });
-        console.log(`✅ Loaded ${Object.keys(map).length} birthdates from player_age.csv`);
+        console.log(`✅ Loaded ${Object.keys(map).length} birthdates from ${agePath}`);
         AGE_MAP = map;
+        AGE_CACHE[agePath] = map;
         resolve(map);
       },
       error: (err) => {
-        console.warn("⚠️ Failed to load player_age.csv", err);
+        console.warn(`⚠️ Failed to load ${agePath}`, err);
         AGE_MAP = {};
+        AGE_CACHE[agePath] = AGE_MAP;
         resolve(AGE_MAP);
       },
     });
@@ -290,7 +301,7 @@ function loadDatasetForMode(mode = "WTA") {
         return;
       }
       console.log(`✅ Loaded ${data.length} rows from ${cfg.path}`);
-      await loadPlayerAgeMap();
+      await loadPlayerAgeMap(mode);
       resetVisuals();
       CURRENT_SOURCE = `${cfg.label}`;
       onCsvLoaded(data, CURRENT_SOURCE, AGE_MAP);
