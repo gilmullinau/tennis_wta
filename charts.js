@@ -28,6 +28,7 @@ const NUMERIC_HINTS = [
   "surface_trend",
   "y",
   "year",
+  "age",
 ];
 
 // Columns that should be exported for model training / inference.
@@ -62,7 +63,11 @@ const MODEL_EXPORT_COLUMNS = [
   "fatigue_14d",
   "fatigue_30d",
   "surface_trend",
+  "age",
+  "age_group",
 ];
+
+const STABILITY_CATEGORICALS = ["age_group"];
 
 const CORR_REQUIRED_FEATURES = [
   "recent_win_rate_5",
@@ -96,6 +101,12 @@ function toNum(x) {
 function uniq(arr) { return [...new Set(arr)]; }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function percent(n, d) { return d ? Math.round((n / d) * 1000) / 10 : 0; }
+function median(arr) {
+  if (!arr || !arr.length) return NaN;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
 
 /* ============================
    State
@@ -107,6 +118,7 @@ let CHARTS = {};
 let PLAYER_NAMES = [];
 let CURRENT_SOURCE = "";
 let CURRENT_MODE = "WTA";
+let AGE_MAP = null;
 
 /* ============================
    Bootstrap
@@ -126,6 +138,56 @@ function init() {
 function setDatasetSource(label) {
   const el = document.getElementById("datasetSource");
   if (el) el.innerText = label;
+}
+
+function loadPlayerAgeMap() {
+  if (AGE_MAP !== null) return Promise.resolve(AGE_MAP);
+
+  return new Promise((resolve) => {
+    Papa.parse("player_age.csv", {
+      download: true,
+      header: true,
+      dynamicTyping: false,
+      skipEmptyLines: true,
+      complete: (res) => {
+        const rows = res.data || [];
+        const map = {};
+        rows.forEach((row) => {
+          const name = (row.Player || row.player || "").toString().trim();
+          const birthRaw =
+            row.Birthdate ||
+            row["Birthdate / Age"] ||
+            row.birthdate ||
+            row.age ||
+            row.Age;
+          const birthDate = parseBirthdate(birthRaw);
+          if (name && birthDate) map[name] = birthDate;
+        });
+        console.log(`✅ Loaded ${Object.keys(map).length} birthdates from player_age.csv`);
+        AGE_MAP = map;
+        resolve(map);
+      },
+      error: (err) => {
+        console.warn("⚠️ Failed to load player_age.csv", err);
+        AGE_MAP = {};
+        resolve(AGE_MAP);
+      },
+    });
+  });
+}
+
+function parseBirthdate(val) {
+  if (!val) return null;
+  if (val instanceof Date && !isNaN(val)) return val;
+  const date = new Date(val);
+  if (!isNaN(date)) return date;
+
+  const num = parseFloat(val);
+  if (Number.isFinite(num) && num > 1000) {
+    const excelEpoch = new Date(Math.round((num - 25569) * 86400 * 1000));
+    if (!isNaN(excelEpoch)) return excelEpoch;
+  }
+  return null;
 }
 
 function setupModeToggle() {
@@ -177,6 +239,7 @@ function resetVisuals() {
 
   [
     "playerTimelineMessage",
+    "ageTimelineMessage",
     "streakTimelineMessage",
     "fatigueTimelineMessage",
     "surfaceTrendMessage",
@@ -199,7 +262,7 @@ function loadDatasetForMode(mode = "WTA") {
     header: true,
     dynamicTyping: true,
     skipEmptyLines: true,
-    complete: (res) => {
+    complete: async (res) => {
       const data = res.data;
       if (!data || !data.length) {
         if (info)
@@ -207,9 +270,10 @@ function loadDatasetForMode(mode = "WTA") {
         return;
       }
       console.log(`✅ Loaded ${data.length} rows from ${cfg.path}`);
+      await loadPlayerAgeMap();
       resetVisuals();
       CURRENT_SOURCE = `${cfg.label}`;
-      onCsvLoaded(data, CURRENT_SOURCE);
+      onCsvLoaded(data, CURRENT_SOURCE, AGE_MAP);
     },
     error: (err) => {
       if (info) info.innerText = `Error loading ${cfg.label}: ${err}`;
@@ -217,7 +281,7 @@ function loadDatasetForMode(mode = "WTA") {
   });
 }
 
-function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
+function onCsvLoaded(rows, sourceLabel = "Custom CSV", ageMap = {}) {
   setDatasetSource(`Source: ${sourceLabel}`);
   // normalize headers
   const norm = rows.map((r) => {
@@ -252,6 +316,8 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
     return mapped;
   });
 
+  computeAgeFeatures(RAW, ageMap);
+
   computePlayerFormFeatures(RAW);
   computePlayerFatigueFeatures(RAW);
   computePlayerSurfaceTrendFeatures(RAW);
@@ -259,6 +325,10 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
   NUMERIC_COLS = Object.keys(RAW[0]).filter(
     (k) => NUMERIC_HINTS.includes(k) || typeof RAW[0][k] === "number"
   );
+
+  if (NUMERIC_COLS.includes("age")) {
+    NUMERIC_COLS = ["age", ...NUMERIC_COLS.filter((c) => c !== "age")];
+  }
 
   PLAYER_NAMES = uniq(
     RAW.flatMap((r) => [r.Player_1 || r.player_1 || r.Player1 || r.player1, r.Player_2 || r.player_2 || r.Player2 || r.player2])
@@ -270,12 +340,54 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV") {
 
   renderDatasetOverview(RAW);
   renderMissingness(RAW);
-  buildFeatureButtons(NUMERIC_COLS);
-  renderDistributions(RAW, NUMERIC_COLS[0]);
+  const defaultDist = NUMERIC_COLS.includes("age") ? "age" : NUMERIC_COLS[0];
+  buildFeatureButtons(NUMERIC_COLS, defaultDist);
+  renderDistributions(RAW, defaultDist);
   renderCorrelations(RAW, corrCols);
-  renderFeatureQualityPanel(RAW, NUMERIC_COLS);
+  renderFeatureQualityPanel(RAW, NUMERIC_COLS, STABILITY_CATEGORICALS);
   initPlayerAnalytics(RAW);
   setupDatasetDownload();
+}
+
+function computeAgeFeatures(rows, ageMap = {}) {
+  const ages = [];
+  rows.forEach((r) => {
+    const matchDateStr = r.match_date || r.Date || r.date;
+    const matchDate = matchDateStr ? new Date(matchDateStr) : null;
+    const player = r.Player_1 || r.player_1 || r.Player1 || r.player1;
+    const birth = player ? ageMap[player] : null;
+    let ageVal = null;
+    if (birth && matchDate && !isNaN(matchDate)) {
+      const diffMs = matchDate.getTime() - birth.getTime();
+      ageVal = diffMs / (365.25 * 24 * 60 * 60 * 1000);
+    }
+    if (Number.isFinite(ageVal)) {
+      const rounded = Math.round(ageVal * 100) / 100;
+      r.age = rounded;
+      ages.push(rounded);
+    } else {
+      r.age = null;
+    }
+  });
+
+  const ageMedian = median(ages);
+  const medianAge = Number.isFinite(ageMedian) ? ageMedian : 0;
+
+  rows.forEach((r) => {
+    const ageVal = Number.isFinite(toNum(r.age)) ? toNum(r.age) : medianAge;
+    const rounded = Math.round(ageVal * 100) / 100;
+    r.age = rounded;
+    r.age_group = getAgeGroup(rounded);
+  });
+}
+
+function getAgeGroup(age) {
+  if (!Number.isFinite(age)) return "Unknown";
+  if (age < 20) return "<20";
+  if (age < 25) return "20-24";
+  if (age < 30) return "25-29";
+  if (age < 35) return "30-34";
+  return "35+";
 }
 
 function ensureFeatureEngineering(rows) {
@@ -640,9 +752,12 @@ function renderDatasetOverview(rows) {
   const years = rows.map((r) => toNum(r.year)).filter((x) => !isNaN(x));
   const minY = Math.min(...years);
   const maxY = Math.max(...years);
+  const ages = rows.map((r) => toNum(r.age)).filter((x) => Number.isFinite(x));
+  const avgAge = ages.length ? (ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(2) : "N/A";
   const html = `
     <div><b>Rows:</b> ${rows.length}</div>
     <div><b>Years:</b> ${minY}–${maxY}</div>
+    <div><b>Average age:</b> ${avgAge}</div>
     <div><b>Numeric columns:</b> ${NUMERIC_COLS.join(", ")}</div>
   `;
   document.getElementById("datasetInfo").innerHTML = html;
@@ -677,12 +792,13 @@ function renderMissingness(rows) {
    Distributions
 =============================*/
 
-function buildFeatureButtons(cols) {
+function buildFeatureButtons(cols, defaultCol) {
   const box = document.getElementById("featureButtons");
   box.innerHTML = "";
   cols.forEach((c, i) => {
     const b = document.createElement("button");
-    b.className = "feature-btn" + (i === 0 ? " active" : "");
+    const active = defaultCol ? c === defaultCol : i === 0;
+    b.className = "feature-btn" + (active ? " active" : "");
     b.innerText = c;
     b.onclick = () => {
       document.querySelectorAll(".feature-btn").forEach((x) => x.classList.remove("active"));
@@ -778,8 +894,8 @@ function renderCorrelations(rows, cols) {
    Feature Quality Panel
 =============================*/
 
-function computeFeatureQualityStats(rows, numericCols) {
-  return numericCols.map((feature) => {
+function computeFeatureQualityStats(rows, numericCols, categoricalCols = []) {
+  const numericStats = numericCols.map((feature) => {
     const vals = rows
       .map((r) => toNum(r[feature]))
       .filter((v) => Number.isFinite(v));
@@ -798,20 +914,29 @@ function computeFeatureQualityStats(rows, numericCols) {
 
     return { feature, std, range: max - min, missing_rate: missingRate };
   });
+
+  const categoricalStats = categoricalCols.map((feature) => {
+    const total = rows.length || 1;
+    const present = rows.filter((r) => r[feature] !== null && r[feature] !== undefined && r[feature] !== "").length;
+    const missingRate = (total - present) / total;
+    return { feature, std: 0, range: 0, missing_rate: missingRate };
+  });
+
+  return [...numericStats, ...categoricalStats];
 }
 
-function renderFeatureQualityPanel(rows, numericCols) {
+function renderFeatureQualityPanel(rows, numericCols, categoricalCols = []) {
   const sortSelect = document.getElementById("qualitySortSelect");
   const tableBody = document.querySelector("#featureQualityTable tbody");
   const canvas = document.getElementById("qualityBarChart");
   if (!sortSelect || !tableBody || !canvas) return;
 
   if (!sortSelect.dataset.bound) {
-    sortSelect.onchange = () => renderFeatureQualityPanel(rows, numericCols);
+    sortSelect.onchange = () => renderFeatureQualityPanel(rows, numericCols, categoricalCols);
     sortSelect.dataset.bound = "1";
   }
 
-  const stats = computeFeatureQualityStats(rows, numericCols);
+  const stats = computeFeatureQualityStats(rows, numericCols, categoricalCols);
   const sortBy = sortSelect.value || "std";
 
   const sorted = [...stats].sort((a, b) => (b[sortBy] ?? -Infinity) - (a[sortBy] ?? -Infinity));
@@ -979,6 +1104,7 @@ function populatePlayerInput(names) {
     renderStreakTimeline(RAW, value);
     renderFatigueTimeline(RAW, value);
     renderSurfaceTrendTimeline(RAW, value);
+    renderAgeProfileTimeline(RAW, value);
   };
 
   selects.forEach((sel) => {
@@ -1126,6 +1252,100 @@ function renderWinRateTimeline(rows, presetName) {
         tooltip: {
           callbacks: {
             label: (ctx) => `Win Rate: ${(ctx.parsed.y * 100).toFixed(1)}%`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderAgeProfileTimeline(rows, presetName) {
+  const message = document.getElementById("ageTimelineMessage");
+  const canvas = document.getElementById("ageTimeline");
+  const select = document.getElementById("playerSelect");
+  if (!canvas) return;
+
+  const targetName = (presetName || (select && select.value) || "").trim();
+
+  const clearChart = (text) => {
+    if (message) message.innerText = text || "";
+    if (CHARTS.ageTimeline) {
+      CHARTS.ageTimeline.destroy();
+      CHARTS.ageTimeline = null;
+    }
+  };
+
+  if (!targetName) {
+    clearChart("Select a player to see their age timeline.");
+    return;
+  }
+
+  const normTarget = targetName.toLowerCase();
+  const matches = rows.filter((r) => {
+    const p1 = (r.Player_1 || r.player_1 || "").toLowerCase();
+    const p2 = (r.Player_2 || r.player_2 || "").toLowerCase();
+    return p1 === normTarget || p2 === normTarget;
+  });
+
+  const withAges = matches
+    .map((m) => ({
+      ...m,
+      _dateStr: m.match_date || m.Date || m.date,
+      _date: new Date(m.match_date || m.Date || m.date),
+      _age: toNum(m.age),
+    }))
+    .filter((m) => m._dateStr && !isNaN(m._date) && Number.isFinite(m._age));
+
+  if (!withAges.length) {
+    clearChart("No age data available for this player.");
+    return;
+  }
+
+  const timeline = withAges.sort((a, b) => a._date - b._date);
+  const ages = timeline.map((t) => t._age);
+  const avg = ages.reduce((a, b) => a + b, 0) / ages.length;
+  const med = median(ages);
+  const groupCounts = timeline.reduce((acc, t) => {
+    const g = getAgeGroup(t._age);
+    acc[g] = (acc[g] || 0) + 1;
+    return acc;
+  }, {});
+  const topGroup = Object.entries(groupCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+  if (message)
+    message.innerText = `${targetName} — avg age ${avg.toFixed(2)}, median ${med.toFixed(2)}, common group ${topGroup}.`;
+
+  const ctx = canvas.getContext("2d");
+  if (CHARTS.ageTimeline) CHARTS.ageTimeline.destroy();
+  CHARTS.ageTimeline = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: timeline.map((t) => t._dateStr),
+      datasets: [
+        {
+          label: "Age",
+          data: timeline.map((t) => t._age),
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.15)",
+          borderWidth: 2,
+          pointRadius: 3,
+          tension: 0.15,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          suggestedMin: Math.max(Math.min(...ages) - 1, 16),
+          suggestedMax: Math.max(...ages) + 1,
+          ticks: { callback: (v) => `${v} yrs` },
+        },
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Age: ${ctx.parsed.y.toFixed(2)}`,
           },
         },
       },

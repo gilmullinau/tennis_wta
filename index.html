@@ -160,6 +160,17 @@
       <div class="card">
         <div class="timeline-header">
           <div>
+            <h3>👤 Age Profile</h3>
+            <p class="muted">Player age across matches and dominant age group (uses the selection above).</p>
+          </div>
+        </div>
+        <div id="ageTimelineMessage" class="muted"></div>
+        <canvas id="ageTimeline"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="timeline-header">
+          <div>
             <h3>📊 Streak Timeline</h3>
             <p class="muted">See winning and losing streaks as they evolve over the player's career.</p>
           </div>
@@ -234,6 +245,8 @@
           <tr><td><b>h2h_advantage</b></td><td>Numeric</td><td>+1 if Player₁ leads H2H, −1 if Player₂</td><td>✅ Yes</td></tr>
           <tr><td><b>last_winner</b></td><td>Numeric</td><td>+1 if Player₁ won last mutual match</td><td>✅ Yes</td></tr>
           <tr><td><b>surface_winrate_adv</b></td><td>Numeric</td><td>Surface-specific winrate difference</td><td>✅ Yes</td></tr>
+          <tr><td><b>age</b></td><td>Numeric</td><td>Player₁ age on match date (years)</td><td>✅ Yes</td></tr>
+          <tr><td><b>age_group</b></td><td>Categorical</td><td>Age bucket derived from &lt;20, 20–24, 25–29, 30–34, 35+</td><td>✅ Encoded</td></tr>
           <tr><td><b>year</b></td><td>Numeric</td><td>Match year (trend control)</td><td>✅ Yes</td></tr>
           <tr><td><b>Surface</b></td><td>Categorical</td><td>Surface type (hard/clay/grass)</td><td>✅ Encoded</td></tr>
           <tr><td><b>Court</b></td><td>Categorical</td><td>Indoor / Outdoor</td><td>✅ Encoded</td></tr>
