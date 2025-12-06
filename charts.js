@@ -14,12 +14,13 @@ const NUMERIC_HINTS = [
   "rank_diff",
   "pts_diff",
   "odd_diff",
-  "recent_win_rate_5",
-  "recent_win_rate_10",
+  "recent_win_rate_5_1",
+  "recent_win_rate_5_2",
+  "recent_win_rate_10_1",
+  "recent_win_rate_10_2",
   "h2h_advantage",
   "last_winner",
   "surface_winrate_adv",
-  "rolling_win_rate_10",
   "streak_1",
   "streak_2",
   "streak_value_1",
@@ -34,7 +35,8 @@ const NUMERIC_HINTS = [
   "surface_trend_2",
   "y",
   "year",
-  "age",
+  "age_1",
+  "age_2",
 ];
 
 // Columns that should be exported for model training / inference.
@@ -42,28 +44,21 @@ const NUMERIC_HINTS = [
 const MODEL_EXPORT_COLUMNS = [
   "y",
   "match_date",
-  "Date",
   "Player_1",
   "Player_2",
-  "Rank_1",
-  "Rank_2",
-  "Pts_1",
-  "Pts_2",
-  "Odd_1",
-  "Odd_2",
-  "Tournament",
   "rank_diff",
   "pts_diff",
   "odd_diff",
   "h2h_advantage",
   "last_winner",
   "surface_winrate_adv",
-  "year",
   "Surface",
   "Court",
   "Round",
-  "recent_win_rate_5",
-  "recent_win_rate_10",
+  "recent_win_rate_5_1",
+  "recent_win_rate_5_2",
+  "recent_win_rate_10_1",
+  "recent_win_rate_10_2",
   "streak_1",
   "streak_2",
   "streak_value_1",
@@ -76,15 +71,19 @@ const MODEL_EXPORT_COLUMNS = [
   "fatigue_30d_2",
   "surface_trend_1",
   "surface_trend_2",
-  "age",
-  "age_group",
+  "age_1",
+  "age_2",
+  "age_group_1",
+  "age_group_2",
 ];
 
 const STABILITY_CATEGORICALS = ["age_group"];
 
 const CORR_REQUIRED_FEATURES = [
-  "recent_win_rate_5",
-  "recent_win_rate_10",
+  "recent_win_rate_5_1",
+  "recent_win_rate_5_2",
+  "recent_win_rate_10_1",
+  "recent_win_rate_10_2",
   "streak_1",
   "streak_2",
   "streak_value_1",
@@ -397,6 +396,7 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV", ageMap = {}) {
   const defaultDist = NUMERIC_COLS.includes("age") ? "age" : NUMERIC_COLS[0];
   buildFeatureButtons(NUMERIC_COLS, defaultDist);
   renderDistributions(RAW, defaultDist);
+  renderLeakWarnings(RAW, corrCols);
   renderCorrelations(RAW, corrCols);
   renderFeatureQualityPanel(RAW, NUMERIC_COLS, STABILITY_CATEGORICALS);
   initPlayerAnalytics(RAW);
@@ -404,32 +404,42 @@ function onCsvLoaded(rows, sourceLabel = "Custom CSV", ageMap = {}) {
 }
 
 function computeAgeFeatures(rows, ageMap = {}) {
-  const ages = [];
+  const allAges = [];
+
   rows.forEach((r) => {
     const matchDateStr = r.match_date || r.Date || r.date;
     const matchDate = matchDateStr ? new Date(matchDateStr) : null;
-    const player = r.Player_1 || r.player_1 || r.Player1 || r.player1;
-    const birth = player ? ageMap[player] : null;
-    const ageVal = birth && matchDate && !isNaN(matchDate)
-      ? computeAgeOnDate(birth, matchDate)
+    const p1 = r.Player_1 || r.player_1 || r.Player1 || r.player1;
+    const p2 = r.Player_2 || r.player_2 || r.Player2 || r.player2;
+
+    const age1 = p1 && matchDate && !isNaN(matchDate)
+      ? computeAgeOnDate(ageMap[p1], matchDate)
       : null;
-    if (Number.isFinite(ageVal)) {
-      const rounded = Math.round(ageVal * 100) / 100;
-      r.age = rounded;
-      ages.push(rounded);
-    } else {
-      r.age = null;
-    }
+    const age2 = p2 && matchDate && !isNaN(matchDate)
+      ? computeAgeOnDate(ageMap[p2], matchDate)
+      : null;
+
+    r.age_1 = Number.isFinite(age1) ? Math.round(age1 * 100) / 100 : null;
+    r.age_2 = Number.isFinite(age2) ? Math.round(age2 * 100) / 100 : null;
+
+    if (Number.isFinite(r.age_1)) allAges.push(r.age_1);
+    if (Number.isFinite(r.age_2)) allAges.push(r.age_2);
   });
 
-  const ageMedian = median(ages);
+  const ageMedian = median(allAges);
   const medianAge = Number.isFinite(ageMedian) ? ageMedian : 0;
 
   rows.forEach((r) => {
-    const ageVal = Number.isFinite(toNum(r.age)) ? toNum(r.age) : medianAge;
-    const rounded = Math.round(ageVal * 100) / 100;
-    r.age = rounded;
-    r.age_group = getAgeGroup(rounded);
+    const a1 = Number.isFinite(toNum(r.age_1)) ? toNum(r.age_1) : medianAge;
+    const a2 = Number.isFinite(toNum(r.age_2)) ? toNum(r.age_2) : medianAge;
+    r.age_1 = Math.round(a1 * 100) / 100;
+    r.age_2 = Math.round(a2 * 100) / 100;
+    r.age_group_1 = getAgeGroup(r.age_1);
+    r.age_group_2 = getAgeGroup(r.age_2);
+
+    // Keep legacy single-age columns for visualizations while aligning model export to _1/_2.
+    r.age = r.age_1;
+    r.age_group = r.age_group_1;
   });
 }
 
@@ -643,9 +653,10 @@ function computePlayerFormFeatures(rows) {
   const normName = (s) => (s || "").toString().trim().toLowerCase();
 
   rows.forEach((r) => {
-    r.recent_win_rate_5 = null;
-    r.recent_win_rate_10 = null;
-    r.rolling_win_rate_10 = null;
+    r.recent_win_rate_5_1 = null;
+    r.recent_win_rate_5_2 = null;
+    r.recent_win_rate_10_1 = null;
+    r.recent_win_rate_10_2 = null;
     r.streak_1 = null;
     r.streak_2 = null;
     r.streak_value_1 = null;
@@ -661,6 +672,7 @@ function computePlayerFormFeatures(rows) {
 
     const p1 = r.Player_1 || r.player_1 || r.Player1 || r.player1;
     const p2 = r.Player_2 || r.player_2 || r.Player2 || r.player2;
+    const y = Number.isFinite(toNum(r.y)) ? toNum(r.y) : null;
     const winnerNorm = normName(r.Winner || r.winner);
 
     [p1, p2].forEach((name) => {
@@ -670,7 +682,12 @@ function computePlayerFormFeatures(rows) {
       matchesByPlayer.get(key).push({
         index: idx,
         date,
-        isWin: winnerNorm && winnerNorm === key,
+        isWin:
+          y === 1
+            ? winnerNorm === key
+            : y === 0
+              ? winnerNorm === key
+              : winnerNorm === key,
       });
     });
   });
@@ -681,29 +698,32 @@ function computePlayerFormFeatures(rows) {
     const wins = [];
 
     matches.forEach((m) => {
-      const result = m.isWin ? 1 : 0;
-      streak = result ? (streak >= 0 ? streak + 1 : 1) : streak <= 0 ? streak - 1 : -1;
-      wins.push(result);
       const window5 = wins.slice(Math.max(0, wins.length - 5));
       const window10 = wins.slice(Math.max(0, wins.length - 10));
-      const rate5 = window5.reduce((a, b) => a + b, 0) / window5.length;
-      const rate10 = window10.reduce((a, b) => a + b, 0) / window10.length;
+      const rate5 = window5.length ? window5.reduce((a, b) => a + b, 0) / window5.length : 0;
+      const rate10 = window10.length ? window10.reduce((a, b) => a + b, 0) / window10.length : 0;
 
       const row = rows[m.index];
       const player1Key = normName(row.Player_1 || row.player_1 || row.Player1 || row.player1);
       const player2Key = normName(row.Player_2 || row.player_2 || row.Player2 || row.player2);
       if (player1Key === playerKey) {
-        row.recent_win_rate_5 = Math.round(rate5 * 100) / 100;
-        row.recent_win_rate_10 = Math.round(rate10 * 100) / 100;
-        row.rolling_win_rate_10 = Math.round(rate10 * 100) / 100;
+        row.recent_win_rate_5_1 = Math.round(rate5 * 100) / 100;
+        row.recent_win_rate_10_1 = Math.round(rate10 * 100) / 100;
         row.streak_1 = streak;
         row.streak_value_1 = streak;
       }
 
       if (player2Key === playerKey) {
+        row.recent_win_rate_5_2 = Math.round(rate5 * 100) / 100;
+        row.recent_win_rate_10_2 = Math.round(rate10 * 100) / 100;
         row.streak_2 = streak;
         row.streak_value_2 = streak;
       }
+
+      // Update state after using the pre-match snapshot.
+      const result = m.isWin ? 1 : 0;
+      wins.push(result);
+      streak = result ? (streak >= 0 ? streak + 1 : 1) : streak <= 0 ? streak - 1 : -1;
     });
   });
 }
@@ -949,33 +969,34 @@ function collectCorrelationColumns(rows, numericCols) {
   return [...colSet].filter((c) => rows.some((r) => Number.isFinite(toNum(r[c]))));
 }
 
-function renderCorrelations(rows, cols) {
-  const corr = (a, b) => {
-    const xs = [],
-      ys = [];
-    rows.forEach((r) => {
-      const va = toNum(r[a]),
-        vb = toNum(r[b]);
-      if (Number.isFinite(va) && Number.isFinite(vb)) {
-        xs.push(va);
-        ys.push(vb);
-      }
-    });
-    if (xs.length < 3) return NaN;
-    const mx = xs.reduce((a, b) => a + b) / xs.length;
-    const my = ys.reduce((a, b) => a + b) / ys.length;
-    let num = 0,
-      dx2 = 0,
-      dy2 = 0;
-    for (let i = 0; i < xs.length; i++) {
-      const dx = xs[i] - mx,
-        dy = ys[i] - my;
-      num += dx * dy;
-      dx2 += dx * dx;
-      dy2 += dy * dy;
+function correlationCoefficient(rows, a, b) {
+  const xs = [],
+    ys = [];
+  rows.forEach((r) => {
+    const va = toNum(r[a]),
+      vb = toNum(r[b]);
+    if (Number.isFinite(va) && Number.isFinite(vb)) {
+      xs.push(va);
+      ys.push(vb);
     }
-    return num / Math.sqrt(dx2 * dy2);
-  };
+  });
+  if (xs.length < 3) return NaN;
+  const mx = xs.reduce((c, v) => c + v, 0) / xs.length;
+  const my = ys.reduce((c, v) => c + v, 0) / ys.length;
+  let num = 0,
+    dx2 = 0,
+    dy2 = 0;
+  for (let i = 0; i < xs.length; i++) {
+    const dx = xs[i] - mx,
+      dy = ys[i] - my;
+    num += dx * dy;
+    dx2 += dx * dx;
+    dy2 += dy * dy;
+  }
+  return num / Math.sqrt(dx2 * dy2);
+}
+
+function renderCorrelations(rows, cols) {
 
   const container = document.getElementById("corrContainer");
   let html = `<table class="corr-table"><thead><tr><th></th>`;
@@ -984,7 +1005,7 @@ function renderCorrelations(rows, cols) {
   cols.forEach((r) => {
     html += `<tr><th>${r}</th>`;
     cols.forEach((c) => {
-      const v = corr(r, c);
+      const v = correlationCoefficient(rows, r, c);
       const color = v > 0 ? `rgba(0,255,0,${Math.abs(v)})` : `rgba(255,0,0,${Math.abs(v)})`;
       html += `<td style="background:${color}">${isNaN(v) ? "—" : v.toFixed(2)}</td>`;
     });
@@ -992,6 +1013,33 @@ function renderCorrelations(rows, cols) {
   });
   html += "</tbody></table>";
   container.innerHTML = html;
+}
+
+function renderLeakWarnings(rows, cols) {
+  const box = document.getElementById("leakWarnings");
+  if (!box) return;
+
+  const yCorrs = cols
+    .filter((c) => c !== "y")
+    .map((feature) => ({ feature, corr: correlationCoefficient(rows, "y", feature) }))
+    .filter((x) => Number.isFinite(x.corr));
+
+  const critical = yCorrs.filter((x) => Math.abs(x.corr) > 0.98);
+  const sorted = critical.sort((a, b) => Math.abs(b.corr) - Math.abs(a.corr));
+
+  if (!sorted.length) {
+    box.innerHTML = "<div class=\"muted\">No features show |corr(y, feature)| > 0.98 — leakage unlikely.</div>";
+    return;
+  }
+
+  const items = sorted
+    .map(
+      (x) =>
+        `<li><strong>${x.feature}</strong>: corr=${x.corr.toFixed(3)} <span class="badge leakage">possible leak</span></li>`
+    )
+    .join("");
+
+  box.innerHTML = `<div class="warning">⚠️ Potential leakage detected (|corr|>0.98). Remove these from X:</div><ul>${items}</ul>`;
 }
 
 /* ============================
@@ -1397,7 +1445,12 @@ function renderAgeProfileTimeline(rows, presetName) {
       ...m,
       _dateStr: m.match_date || m.Date || m.date,
       _date: new Date(m.match_date || m.Date || m.date),
-      _age: toNum(m.age),
+      _age:
+        (m.Player_1 || m.player_1 || "").toLowerCase() === normTarget
+          ? toNum(m.age_1)
+          : (m.Player_2 || m.player_2 || "").toLowerCase() === normTarget
+            ? toNum(m.age_2)
+            : NaN,
     }))
     .filter((m) => m._dateStr && !isNaN(m._date) && Number.isFinite(m._age));
 
