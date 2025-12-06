@@ -351,6 +351,7 @@ canvas {
 .badge.derived { border-color: #3fb950; color: #3fb950; }
 .badge.leakage { border-color: #ff6b6b; color: #ff9b9b; }
 .badge.optional { border-color: #8b949e; color: #8b949e; }
+.warning { color: #ff9b9b; margin-bottom: 0.5rem; font-weight: 600; }
 
 /* Responsive */
 @media (max-width: 768px) {

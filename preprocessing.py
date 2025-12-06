@@ -26,6 +26,9 @@ df = df[df["Date"].notna()].copy()
 df = df[~((df["Pts_1"] < 0) | (df["Pts_2"] < 0))]
 df = df[df["Winner"].isin(df[["Player_1", "Player_2"]].values.flatten())]
 
+# Normalize and persist match date explicitly for downstream consumers.
+df["match_date"] = df["Date"].dt.strftime("%Y-%m-%d")
+
 # === 4. Initial target variable ===
 df["y"] = (df["Winner"].astype(str).str.strip() == df["Player_1"].astype(str).str.strip()).astype("int8")
 
@@ -140,7 +143,7 @@ print("Final shape:", df.shape)
 
 # === 13. Save cleaned data ===
 cols = [
-    "Tournament","Date","Court","Surface","Round","Best of",
+    "Tournament","Date","match_date","Court","Surface","Round","Best of",
     "Player_1","Player_2","Winner","Rank_1","Rank_2","Pts_1","Pts_2",
     "Odd_1","Odd_2","Score","y","year",
     "rank_diff","pts_diff","odd_diff","h2h_advantage","last_winner","surface_winrate_adv"
